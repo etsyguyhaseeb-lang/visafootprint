@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+aiosqlite
+python-dotenv
+openai
+reportlab
+pillow
+requests
+httpx
+python-multipart
+instaloader
+pypdf
+playwright
+yt-dlp

@@ -1,0 +1,35 @@
+import uuid
+from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
+from .database import Base
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
+
+
+class Submission(Base):
+    __tablename__ = "submissions"
+
+    id           = Column(String, primary_key=True, default=new_id)
+    email        = Column(String, nullable=False, index=True)
+    name         = Column(String, nullable=False)
+    country      = Column(String, nullable=False)
+    accounts     = Column(JSON, nullable=False)   # [{platform, handle}]
+    reason       = Column(String, nullable=False)
+    timeline     = Column(String, nullable=False)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id            = Column(String, primary_key=True, default=new_id)
+    submission_id = Column(String, nullable=False, index=True)
+    status        = Column(String, default="queued")   # queued|processing|done|failed
+    report_json   = Column(JSON, nullable=True)
+    pdf_path      = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+    updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
