@@ -136,7 +136,7 @@ def analyze_posts(
     posts_text = "\n\n".join(
         f"[{i+1}] Platform: {p.get('platform','Unknown')} | "
         f"Date: {p.get('posted_at') or 'Unknown'}\n{p.get('post_text','')}"
-        for i, p in enumerate(real_posts[:500])  # match scraper MAX_POSTS
+        for i, p in enumerate(real_posts[:50])  # match scraper MAX_POSTS
     )
 
     platforms = {p.get("platform", "Unknown") for p in real_posts}

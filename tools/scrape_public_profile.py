@@ -45,7 +45,7 @@ _USE_PAID          = os.getenv("USE_PAID_SCRAPERS", "false").lower() == "true"
 SCRAPECREATORS_KEY = os.getenv("SCRAPECREATORS_API_KEY", "") if _USE_PAID else ""
 APIFY_TOKEN        = os.getenv("APIFY_API_TOKEN", "")        if _USE_PAID else ""
 
-MAX_POSTS     = 500
+MAX_POSTS     = 50
 SC_BASE_URL   = "https://api.scrapecreators.com"
 APIFY_TIMEOUT = 300
 

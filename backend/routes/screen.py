@@ -25,7 +25,7 @@ REPORTS_DIR       = os.getenv("REPORTS_DIR", ".tmp/reports")
 PROJECT_ROOT      = str(Path(__file__).resolve().parents[2])
 MAX_ACCOUNTS      = 10
 MAX_SUBMISSIONS_PER_EMAIL = 3
-SCRAPE_TIMEOUT    = 60  # seconds per account before subprocess is killed
+SCRAPE_TIMEOUT    = 420  # 7 min — must be > APIFY_TIMEOUT (300s) + startup overhead
 PROFILE_IMGS_DIR  = ".tmp/profile_images"
 SCREENSHOTS_DIR   = ".tmp/screenshots"
 
@@ -243,12 +243,16 @@ async def run_screening_job(report_id: str, submission_data: dict):
                 enriched_accounts.append({**acc, "profile_image": img_path})
             analysis["accounts"] = enriched_accounts
 
-            # 3b. Screenshot flagged posts (non-blocking failures ignored)
+            # 3b. Screenshot flagged posts — hard 25s cap so this never hangs the job
             flagged = analysis.get("flagged_posts", [])
             if flagged:
-                screenshots = await loop.run_in_executor(
-                    None, _capture_screenshots_sync, flagged, report_id,
-                )
+                try:
+                    screenshots = await asyncio.wait_for(
+                        loop.run_in_executor(None, _capture_screenshots_sync, flagged, report_id),
+                        timeout=25.0,
+                    )
+                except (asyncio.TimeoutError, Exception):
+                    screenshots = {}
                 for fp in flagged:
                     url = fp.get("post_url", "")
                     if url and url in screenshots:
