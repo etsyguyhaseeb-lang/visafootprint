@@ -126,23 +126,7 @@ def _apify_run(actor_id: str, input_data: dict) -> list[dict]:
 def scrape_twitter(handle: str) -> list[dict]:
     profile_url = f"https://x.com/{handle}"
 
-    # 1. Playwright + saved cookies — best results, uses platform's own session
-    posts = scrape_twitter_own(handle)
-    if _is_ok(posts):
-        return posts
-
-    # 2. Playwright headless — no login, works for some public profiles
-    posts = scrape_twitter_public(handle)
-    if _is_ok(posts):
-        return posts
-
-    # 3. Twitter API v2 — only useful if on $100/mo Basic plan
-    if TWITTER_BEARER_TOKEN:
-        posts = scrape_twitter_apiv2(handle)
-        if _is_ok(posts):
-            return posts
-
-    # 4. Optional paid fallback
+    # Production: Apify runs FIRST — own scrapers need cookies that don't exist on the server
     if _USE_PAID:
         items = _sc_paginate("/v1/twitter/user-tweets", {"handle": handle},
                              items_key="tweets", next_key="nextCursor")
@@ -163,6 +147,20 @@ def scrape_twitter(handle: str) -> list[dict]:
                      "posted_at": i.get("created_at")}
                     for i in apify if (i.get("full_text") or i.get("text")) and not i.get("noResults")]
 
+    # Local dev: own scrapers first
+    posts = scrape_twitter_own(handle)
+    if _is_ok(posts):
+        return posts
+
+    posts = scrape_twitter_public(handle)
+    if _is_ok(posts):
+        return posts
+
+    if TWITTER_BEARER_TOKEN:
+        posts = scrape_twitter_apiv2(handle)
+        if _is_ok(posts):
+            return posts
+
     return _err("Twitter/X",
                 "Profile may be protected — try saving Twitter cookies via save-cookies",
                 profile_url)
@@ -173,12 +171,7 @@ def scrape_twitter(handle: str) -> list[dict]:
 def scrape_instagram(handle: str) -> list[dict]:
     profile_url = f"https://www.instagram.com/{handle}/"
 
-    # 1. instaloader — works on public profiles, zero cost, zero auth
-    posts = scrape_instagram_own(handle)
-    if _is_ok(posts):
-        return posts
-
-    # 2. Optional paid fallback
+    # Production: Apify runs FIRST
     if _USE_PAID:
         items = _sc_paginate("/v2/instagram/user/posts", {"handle": handle},
                              items_key="data", next_key="nextCursor")
@@ -199,6 +192,11 @@ def scrape_instagram(handle: str) -> list[dict]:
                      "posted_at": p.get("timestamp")}
                     for p in apify[:MAX_POSTS] if (p.get("caption") or "").strip()]
 
+    # Local dev: instaloader fallback
+    posts = scrape_instagram_own(handle)
+    if _is_ok(posts):
+        return posts
+
     return _err("Instagram",
                 "Profile may be private, or run save-cookies for authenticated scraping",
                 profile_url)
@@ -209,12 +207,7 @@ def scrape_instagram(handle: str) -> list[dict]:
 def scrape_tiktok(handle: str) -> list[dict]:
     profile_url = f"https://www.tiktok.com/@{handle}"
 
-    # 1. yt-dlp — completely free, no auth needed, very reliable
-    posts = scrape_tiktok_own(handle)
-    if _is_ok(posts):
-        return posts
-
-    # 2. Optional paid fallback
+    # Production: Apify runs FIRST
     if _USE_PAID:
         items = _sc_paginate("/v3/tiktok/profile/videos", {"handle": handle},
                              items_key="videos", next_key="nextCursor")
@@ -239,6 +232,11 @@ def scrape_tiktok(handle: str) -> list[dict]:
                                    if i.get("createTime") else i.get("createTimeISO"))}
                     for i in apify if i.get("id") and not i.get("noResults")]
 
+    # Local dev: yt-dlp fallback
+    posts = scrape_tiktok_own(handle)
+    if _is_ok(posts):
+        return posts
+
     return _err("TikTok",
                 "TikTok blocked access — run save-cookies to authenticate yt-dlp",
                 profile_url)
@@ -249,13 +247,7 @@ def scrape_tiktok(handle: str) -> list[dict]:
 def scrape_facebook(handle: str) -> list[dict]:
     fb_url = handle if handle.startswith("http") else f"https://www.facebook.com/{handle}"
 
-    # 1. Playwright headless — scrapes public pages and profiles
-    #    Works without login for public content; uses saved cookies when available
-    posts = scrape_facebook_own(handle)
-    if _is_ok(posts):
-        return posts
-
-    # 2. Optional paid fallback
+    # Production: Apify runs FIRST
     if _USE_PAID:
         items = _sc_paginate("/v1/facebook/profile/posts", {"url": fb_url},
                              items_key="posts", next_key="nextCursor")
@@ -277,6 +269,11 @@ def scrape_facebook(handle: str) -> list[dict]:
                      "posted_at": i.get("time") or i.get("timestamp")}
                     for i in apify if (i.get("text") or i.get("message") or "").strip()]
 
+    # Local dev: Playwright fallback
+    posts = scrape_facebook_own(handle)
+    if _is_ok(posts):
+        return posts
+
     return _err("Facebook",
                 "Facebook shows limited content without login — run save-cookies to authenticate",
                 fb_url)
@@ -292,12 +289,12 @@ def scrape_youtube(handle: str) -> list[dict]:
     else:
         channel_url = f"https://www.youtube.com/@{handle}"
 
-    # 1. yt-dlp — completely free, no API key, very reliable
+    # Production: YouTube Data API first, then yt-dlp as fallback
+    # (yt-dlp also works on Railway since it doesn't need cookies)
     posts = scrape_youtube_own(handle)
     if _is_ok(posts):
         return posts
 
-    # 2. YouTube Data API v3 — free 10,000 units/day quota
     if YOUTUBE_API_KEY:
         try:
             with httpx.Client(timeout=30) as client:
