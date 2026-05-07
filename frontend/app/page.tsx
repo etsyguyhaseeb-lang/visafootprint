@@ -57,7 +57,7 @@ function Hero() {
           className="flex flex-col sm:flex-row gap-4 justify-center mb-14"
         >
           <Link href="/screen" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-xl text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl shadow-blue-600/30">
-            Get My Free Screening Report <ArrowRight className="w-5 h-5" />
+            Screen My Profile Now <ArrowRight className="w-5 h-5" />
           </Link>
           <Link href="/pricing" className="inline-flex items-center gap-2 border border-white/30 hover:border-white/60 text-white font-semibold px-8 py-4 rounded-xl text-lg transition-all duration-200 hover:bg-white/5">
             View Pricing
@@ -198,12 +198,12 @@ function Features() {
 
 function PricingPreview() {
   const plans = [
-    { name:"Free", price:"$0", period:"", highlight:false, cta:"Get Started Free", href:"/screen",
-      features:["1 social media account","Basic AI analysis","Summary report only","Email delivery"] },
-    { name:"Basic", price:"$19", period:"/report", highlight:true, cta:"Buy Report", href:"/pricing",
-      features:["Up to 3 accounts","Full AI risk analysis","PDF report download","All platforms","Flagged post details"] },
-    { name:"Pro", price:"$49", period:"/report", highlight:false, cta:"Go Pro", href:"/pricing",
-      features:["Up to 10 accounts","Priority processing","Network risk analysis","Full PDF report","Recommendations","Email support"] },
+    { name:"Essential", price:"$29", oldPrice:null, period:"/account", highlight:false, cta:"Get Started — $29", href:"/screen", saving:null,
+      features:["1 social media account","Advanced AI analysis","Essential risk report","Risk scoring","2–3 day delivery"] },
+    { name:"3-Account Bundle", price:"$75", oldPrice:"$87", period:"", highlight:true, cta:"Choose AI Scan", href:"/pricing", saving:"Save $12 with the bundle",
+      features:["Up to 3 social media accounts","Advanced AI analysis","Comprehensive PDF report","Post links & screenshots","2–3 day delivery"] },
+    { name:"Human Review", price:"$200", oldPrice:"$250", period:"", highlight:false, cta:"Express Interest – Save $50", href:"/pricing", saving:"20% OFF – Limited Time",
+      features:["Unlimited accounts","Full AI scan included","Expert human review","Immigration specialist insights","Priority support"] },
   ];
   return (
     <section className="py-20 lg:py-28 bg-white">
@@ -217,25 +217,30 @@ function PricingPreview() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {plans.map((plan) => (
               <motion.div key={plan.name} variants={fadeUp}
-                className={`relative rounded-2xl p-8 border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${plan.highlight ? "bg-[#0A1628] border-blue-600 shadow-xl shadow-blue-600/20" : "bg-white border-slate-200 hover:border-blue-300"}`}
+                className={`relative rounded-2xl p-8 border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${plan.highlight ? "bg-white border-amber-400 shadow-xl shadow-amber-400/20" : "bg-white border-slate-200 hover:border-blue-300"}`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</span>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="bg-amber-400 text-slate-900 text-xs font-bold px-5 py-1.5 rounded-full tracking-wide">MOST POPULAR</span>
                   </div>
                 )}
-                <div className={plan.highlight ? "text-white" : "text-slate-900"}>
-                  <div className="font-bold text-sm mb-2 uppercase tracking-wide opacity-60">{plan.name}</div>
-                  <div className="text-4xl font-extrabold mb-1">{plan.price}<span className="text-base font-normal opacity-60">{plan.period}</span></div>
-                  <ul className="mt-6 space-y-3 mb-8">
+                <div className="text-slate-900">
+                  <div className="font-bold text-sm mb-2 uppercase tracking-wide text-slate-400">{plan.name}</div>
+                  <div className="flex items-baseline gap-2 mb-0.5">
+                    {plan.oldPrice && <span className="text-xl font-bold text-slate-400 line-through">{plan.oldPrice}</span>}
+                    <span className={`text-4xl font-extrabold ${plan.highlight ? "text-amber-500" : "text-slate-900"}`}>{plan.price}</span>
+                    {plan.period && <span className="text-base font-normal text-slate-400">{plan.period}</span>}
+                  </div>
+                  {plan.saving && <div className={`text-sm font-semibold mb-3 ${plan.highlight ? "text-amber-600" : "text-blue-600"}`}>{plan.saving}</div>}
+                  <ul className="mt-4 space-y-3 mb-8">
                     {plan.features.map((f) => (
                       <li key={f} className="flex items-center gap-2 text-sm">
-                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${plan.highlight ? "text-blue-400" : "text-green-500"}`} />
-                        <span className="opacity-80">{f}</span>
+                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${plan.highlight ? "text-amber-500" : "text-green-500"}`} />
+                        <span className="text-slate-700">{f}</span>
                       </li>
                     ))}
                   </ul>
-                  <Link href={plan.href} className={`block text-center font-bold py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 ${plan.highlight ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg" : "bg-slate-100 hover:bg-slate-200 text-slate-900"}`}>
+                  <Link href={plan.href} className={`block text-center font-bold py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 ${plan.highlight ? "bg-amber-400 hover:bg-amber-300 text-slate-900 shadow-lg" : "bg-slate-900 hover:bg-slate-700 text-white"}`}>
                     {plan.cta}
                   </Link>
                 </div>
@@ -291,9 +296,9 @@ function CTABanner() {
           <motion.div variants={fadeUp}>
             <div className="flex justify-center mb-4">{[...Array(5)].map((_,i) => <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />)}</div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Don&apos;t Let a Tweet Cost You Your Visa</h2>
-            <p className="text-slate-300 text-lg mb-8 max-w-xl mx-auto">Join thousands of applicants who screened their profiles before their US visa interview. Your free report takes under 3 minutes.</p>
+            <p className="text-slate-300 text-lg mb-8 max-w-xl mx-auto">Join thousands of applicants who screened their profiles before their US visa interview. Your professional screening report is ready in under 3 minutes.</p>
             <Link href="/screen" className="inline-flex items-center gap-2 bg-white text-[#0A1628] font-bold px-8 py-4 rounded-xl text-lg hover:bg-blue-50 transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl">
-              Get My Free Report Now <ArrowRight className="w-5 h-5" />
+              Get My Screening Report <ArrowRight className="w-5 h-5" />
             </Link>
           </motion.div>
         </InView>

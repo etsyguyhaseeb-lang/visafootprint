@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+import httpx
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
@@ -19,11 +21,81 @@ from backend.models import Report, Submission
 
 router = APIRouter()
 
-REPORTS_DIR  = os.getenv("REPORTS_DIR", ".tmp/reports")
-PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
-MAX_ACCOUNTS = 10
+REPORTS_DIR       = os.getenv("REPORTS_DIR", ".tmp/reports")
+PROJECT_ROOT      = str(Path(__file__).resolve().parents[2])
+MAX_ACCOUNTS      = 10
 MAX_SUBMISSIONS_PER_EMAIL = 3
-SCRAPE_TIMEOUT = 60  # seconds per account before subprocess is killed
+SCRAPE_TIMEOUT    = 60  # seconds per account before subprocess is killed
+PROFILE_IMGS_DIR  = ".tmp/profile_images"
+SCREENSHOTS_DIR   = ".tmp/screenshots"
+
+# Platform handle → unavatar.io slug
+_UNAVATAR_SLUG = {
+    "twitter": "twitter", "x": "twitter",
+    "instagram": "instagram",
+    "tiktok": "tiktok",
+    "youtube": "youtube",
+    "facebook": "facebook",
+}
+
+
+def _fetch_profile_image_sync(platform: str, handle: str, report_id: str, idx: int) -> str:
+    """Download profile avatar via unavatar.io. Returns local file path or ''."""
+    slug = _UNAVATAR_SLUG.get(platform.lower(), "")
+    if not slug:
+        return ""
+    clean = handle.lstrip("@").split("?")[0].rstrip("/").split("/")[-1]
+    if not clean:
+        return ""
+    try:
+        Path(PROFILE_IMGS_DIR).mkdir(parents=True, exist_ok=True)
+        url = f"https://unavatar.io/{slug}/{clean}"
+        r = httpx.get(url, timeout=8, follow_redirects=True)
+        if r.status_code == 200 and len(r.content) > 500:
+            ext = ".jpg"
+            out = Path(PROFILE_IMGS_DIR) / f"{report_id}_{idx}{ext}"
+            out.write_bytes(r.content)
+            return str(out)
+    except Exception:
+        pass
+    return ""
+
+
+def _capture_screenshots_sync(flagged_posts: list, report_id: str) -> dict:
+    """Screenshot each flagged post URL using Playwright. Returns {url: local_path}."""
+    posts_with_url = [fp for fp in flagged_posts if (fp.get("post_url") or "").startswith("http")][:5]
+    if not posts_with_url:
+        return {}
+    shots: dict = {}
+    try:
+        from playwright.sync_api import sync_playwright
+        Path(SCREENSHOTS_DIR).mkdir(parents=True, exist_ok=True)
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx = browser.new_context(
+                viewport={"width": 640, "height": 900},
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+            )
+            for i, fp in enumerate(posts_with_url):
+                url = fp["post_url"]
+                try:
+                    page = ctx.new_page()
+                    page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                    page.wait_for_timeout(2500)
+                    out = str(Path(SCREENSHOTS_DIR) / f"{report_id}_{i}.png")
+                    page.screenshot(path=out, full_page=False, clip={"x": 0, "y": 0, "width": 640, "height": 700})
+                    page.close()
+                    shots[url] = out
+                except Exception:
+                    pass
+            browser.close()
+    except Exception:
+        pass
+    return shots
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -161,7 +233,28 @@ async def run_screening_job(report_id: str, submission_data: dict):
             analysis["reason"]   = submission_data["reason"]
             analysis["accounts"] = accounts
 
-            # 3. Generate PDF (blocking — run in thread pool)
+            # 3a. Fetch profile images for each account (non-blocking failures ignored)
+            enriched_accounts = []
+            for idx, acc in enumerate(accounts):
+                img_path = await loop.run_in_executor(
+                    None, _fetch_profile_image_sync,
+                    acc.get("platform", ""), acc.get("handle", ""), report_id, idx,
+                )
+                enriched_accounts.append({**acc, "profile_image": img_path})
+            analysis["accounts"] = enriched_accounts
+
+            # 3b. Screenshot flagged posts (non-blocking failures ignored)
+            flagged = analysis.get("flagged_posts", [])
+            if flagged:
+                screenshots = await loop.run_in_executor(
+                    None, _capture_screenshots_sync, flagged, report_id,
+                )
+                for fp in flagged:
+                    url = fp.get("post_url", "")
+                    if url and url in screenshots:
+                        fp["screenshot_path"] = screenshots[url]
+
+            # 4. Generate PDF (blocking — run in thread pool)
             Path(REPORTS_DIR).mkdir(parents=True, exist_ok=True)
             pdf_path = f"{REPORTS_DIR}/{report_id}.pdf"
             await loop.run_in_executor(None, generate_pdf, analysis, pdf_path)

@@ -14,8 +14,9 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     BaseDocTemplate, Frame, HRFlowable, KeepTogether, PageTemplate,
-    Paragraph, Spacer, Table, TableStyle,
+    Paragraph, Spacer, Table, TableStyle, Image as RLImage,
 )
+from reportlab.lib.utils import ImageReader
 
 try:
     from reportlab.graphics.shapes import (
@@ -193,13 +194,33 @@ def draw_cover_page(c: canvas.Canvas, data: dict):
     c.setStrokeColor(colors.HexColor("#1E3A5F")); c.setLineWidth(1)
     c.line(MARGIN, H - 59*mm, W - MARGIN, H - 59*mm)
 
-    # Avatar circle
+    # Avatar circle — use actual profile photo if available
     name     = data.get("name", "Unknown")
     initials = "".join(w[0].upper() for w in name.split()[:2]) or "?"
     cx, cy   = W/2, H - 86*mm
-    c.setFillColor(PURPLE); c.circle(cx, cy, 17*mm, fill=1, stroke=0)
-    c.setFillColor(WHITE); c.setFont("Helvetica-Bold", 22)
-    c.drawCentredString(cx, cy - 3.5*mm, initials)
+    _prof_img = ""
+    for _acc in data.get("accounts", []):
+        _pi = _acc.get("profile_image", "")
+        if _pi and Path(_pi).exists():
+            _prof_img = _pi
+            break
+    if _prof_img:
+        try:
+            c.saveState()
+            _pp = c.beginPath(); _pp.circle(cx, cy, 17*mm)
+            c.clipPath(_pp, stroke=0, fill=0)
+            c.drawImage(_prof_img, cx - 17*mm, cy - 17*mm, 34*mm, 34*mm, mask="auto")
+            c.restoreState()
+            c.setStrokeColor(PURPLE); c.setLineWidth(2.5)
+            c.circle(cx, cy, 17*mm, fill=0, stroke=1)
+        except Exception:
+            c.setFillColor(PURPLE); c.circle(cx, cy, 17*mm, fill=1, stroke=0)
+            c.setFillColor(WHITE); c.setFont("Helvetica-Bold", 22)
+            c.drawCentredString(cx, cy - 3.5*mm, initials)
+    else:
+        c.setFillColor(PURPLE); c.circle(cx, cy, 17*mm, fill=1, stroke=0)
+        c.setFillColor(WHITE); c.setFont("Helvetica-Bold", 22)
+        c.drawCentredString(cx, cy - 3.5*mm, initials)
 
     # Name
     c.setFillColor(WHITE); c.setFont("Helvetica-Bold", 30)
@@ -388,7 +409,8 @@ def _flagged_card(fp: dict, S: dict) -> Table:
     link_line = f'<font color="#64748B">📱 Posted on {plat} • {date}</font>'
     if url:
         link_line += (f'   <link href="{url}">'
-                      f'<font color="#1E40AF">  Check original post →</font></link>')
+                      f'<font color="#1E40AF"><b>  🔗 View Original Post →</b></font></link>'
+                      f'<br/><font color="#94A3B8" size="7">{url}</font>')
 
     badge_para = Paragraph(
         f'{emoji} {lvl} RISK: {cat}',
@@ -521,16 +543,34 @@ def build_report_story(data: dict, S: dict) -> list:
     name     = data.get("name", "—")
     initials = "".join(w[0].upper() for w in name.split()[:2]) or "?"
 
-    av = Table(
-        [[Paragraph(f'<font color="white"><b>{initials}</b></font>',
-                    ParagraphStyle("av", fontName="Helvetica-Bold", fontSize=16,
-                                   textColor=WHITE, alignment=TA_CENTER))]],
-        colWidths=[15*mm], rowHeights=[15*mm])
-    av.setStyle(TableStyle([
-        ("BACKGROUND", (0,0),(0,0), PURPLE),
-        ("ALIGN",      (0,0),(0,0), "CENTER"),
-        ("VALIGN",     (0,0),(0,0), "MIDDLE"),
-    ]))
+    _sum_img = ""
+    for _sa in data.get("accounts", []):
+        _spi = _sa.get("profile_image", "")
+        if _spi and Path(_spi).exists():
+            _sum_img = _spi
+            break
+    if _sum_img:
+        try:
+            av = Table([[RLImage(_sum_img, width=15*mm, height=15*mm)]],
+                       colWidths=[15*mm], rowHeights=[15*mm])
+            av.setStyle(TableStyle([
+                ("BOX",   (0,0),(0,0), 1.5, PURPLE),
+                ("ALIGN", (0,0),(0,0), "CENTER"),
+                ("VALIGN",(0,0),(0,0), "MIDDLE"),
+            ]))
+        except Exception:
+            _sum_img = ""
+    if not _sum_img:
+        av = Table(
+            [[Paragraph(f'<font color="white"><b>{initials}</b></font>',
+                        ParagraphStyle("av", fontName="Helvetica-Bold", fontSize=16,
+                                       textColor=WHITE, alignment=TA_CENTER))]],
+            colWidths=[15*mm], rowHeights=[15*mm])
+        av.setStyle(TableStyle([
+            ("BACKGROUND", (0,0),(0,0), PURPLE),
+            ("ALIGN",      (0,0),(0,0), "CENTER"),
+            ("VALIGN",     (0,0),(0,0), "MIDDLE"),
+        ]))
 
     rc       = risk_color(overall)
     rb_badge = Table(
@@ -826,9 +866,20 @@ def build_report_story(data: dict, S: dict) -> list:
 
     # ── Flagged Content ───────────────────────────────────────────────────────
     if flagged:
-        story += _sec(f"🚩 High-Risk Flagged Content   ({len(flagged)} concerning posts)", S)
+        story += _sec(f"🚩 Flagged Content   ({len(flagged)} concerning posts)", S)
         for fp in flagged:
-            story.append(KeepTogether(_flagged_card(fp, S)))
+            card_items = [_flagged_card(fp, S)]
+            shot = fp.get("screenshot_path", "")
+            if shot and Path(shot).exists():
+                try:
+                    scr = RLImage(shot, width=CONTENT_W - 2, height=65*mm, kind="proportional")
+                    cap = Paragraph(
+                        '<font color="#64748B"><i>Screenshot captured at time of analysis</i></font>',
+                        S["small"])
+                    card_items += [scr, cap]
+                except Exception:
+                    pass
+            story.append(KeepTogether(card_items))
             story.append(Spacer(1, 6))
 
     # ── Network Risk Analysis ─────────────────────────────────────────────────
