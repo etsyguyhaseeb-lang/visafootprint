@@ -33,7 +33,7 @@ function Hero() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <div className="inline-flex items-center gap-2 bg-blue-600/20 border border-blue-500/30 text-blue-300 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
             <Brain className="w-4 h-4" />
-            Powered by GPT-4o AI
+            #1 Social Media Scanner for Visa Applicants
           </div>
         </motion.div>
         <motion.h1
