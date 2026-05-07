@@ -28,9 +28,9 @@ MAX_SUBMISSIONS_PER_EMAIL = 3
 SCRAPE_TIMEOUT    = 420  # 7 min — must be > APIFY_TIMEOUT (300s) + startup overhead
 PROFILE_IMGS_DIR  = ".tmp/profile_images"
 SCREENSHOTS_DIR   = ".tmp/screenshots"
-# Playwright screenshots disabled by default — Chromium hangs on Railway servers.
-# Set ENABLE_SCREENSHOTS=true in local .env only if you have Playwright installed.
-SCREENSHOTS_ENABLED = os.getenv("ENABLE_SCREENSHOTS", "false").lower() == "true"
+# Playwright is installed in the Railway Docker image — screenshots enabled by default.
+# Set ENABLE_SCREENSHOTS=false to disable if you see Chromium issues.
+SCREENSHOTS_ENABLED = os.getenv("ENABLE_SCREENSHOTS", "true").lower() == "true"
 
 # Platform handle → unavatar.io slug
 _UNAVATAR_SLUG = {
