@@ -256,7 +256,7 @@ export default function ScreenPage() {
                 <div className="space-y-5">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">Social Media Accounts</h2>
-                    <p className="text-sm text-slate-500 mt-1">Twitter/X and YouTube are auto-scraped. For Instagram, TikTok, LinkedIn and Facebook — click <strong>Paste posts</strong> to add content manually.</p>
+                    <p className="text-sm text-slate-500 mt-1">All platforms are automatically scraped. Just enter your username or profile URL and we handle the rest.</p>
                   </div>
                   <div className="space-y-3">
                     {accounts.map((acc, i) => (
