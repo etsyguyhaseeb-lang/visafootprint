@@ -161,7 +161,7 @@ function HowItWorks() {
 
 function Features() {
   const features = [
-    { icon:Brain, title:"GPT-4o AI Analysis", desc:"Deep semantic analysis of posts — not just keyword matching." },
+    { icon:Brain, title:"AI Tools with Lawyer Review", desc:"AI-powered screening combined with immigration lawyer review for a complete, expert-backed assessment." },
     { icon:AlertTriangle, title:"INA §212 Risk Screening", desc:"Checks against all grounds of inadmissibility including security, extremism, and criminal activity." },
     { icon:FileText, title:"Professional PDF Report", desc:"Branded PDF with risk scores, flagged posts, network analysis and recommendations." },
     { icon:Globe, title:"Multi-Platform Coverage", desc:"Twitter/X, Instagram, TikTok, LinkedIn, Facebook, YouTube — up to 10 accounts." },
