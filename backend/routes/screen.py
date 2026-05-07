@@ -28,6 +28,9 @@ MAX_SUBMISSIONS_PER_EMAIL = 3
 SCRAPE_TIMEOUT    = 420  # 7 min — must be > APIFY_TIMEOUT (300s) + startup overhead
 PROFILE_IMGS_DIR  = ".tmp/profile_images"
 SCREENSHOTS_DIR   = ".tmp/screenshots"
+# Playwright screenshots disabled by default — Chromium hangs on Railway servers.
+# Set ENABLE_SCREENSHOTS=true in local .env only if you have Playwright installed.
+SCREENSHOTS_ENABLED = os.getenv("ENABLE_SCREENSHOTS", "false").lower() == "true"
 
 # Platform handle → unavatar.io slug
 _UNAVATAR_SLUG = {
@@ -243,15 +246,15 @@ async def run_screening_job(report_id: str, submission_data: dict):
                 enriched_accounts.append({**acc, "profile_image": img_path})
             analysis["accounts"] = enriched_accounts
 
-            # 3b. Screenshot flagged posts — hard 25s cap so this never hangs the job
+            # 3b. Screenshots — only if explicitly enabled (Playwright hangs on Railway)
             flagged = analysis.get("flagged_posts", [])
-            if flagged:
+            if flagged and SCREENSHOTS_ENABLED:
                 try:
                     screenshots = await asyncio.wait_for(
                         loop.run_in_executor(None, _capture_screenshots_sync, flagged, report_id),
                         timeout=25.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     screenshots = {}
                 for fp in flagged:
                     url = fp.get("post_url", "")

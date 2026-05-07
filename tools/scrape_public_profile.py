@@ -115,7 +115,8 @@ def _apify_run(actor_id: str, input_data: dict) -> list[dict]:
     try:
         r = httpx.post(
             f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items",
-            params={"token": APIFY_TOKEN}, json=input_data, timeout=APIFY_TIMEOUT)
+            params={"token": APIFY_TOKEN, "limit": MAX_POSTS},
+            json=input_data, timeout=APIFY_TIMEOUT)
         return r.json() if r.status_code in (200, 201) else []
     except Exception:
         return []
