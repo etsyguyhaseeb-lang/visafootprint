@@ -240,28 +240,49 @@ def draw_cover_page(c: canvas.Canvas, data: dict):
     c.setStrokeColor(colors.HexColor("#1E3A5F"))
     c.line(MARGIN, H - 133*mm, W - MARGIN, H - 133*mm)
 
-    # Meta grid (2 columns × 3 rows)
+    # ── Submission Details ────────────────────────────────────────────────────
+    c.setFillColor(BLUE_LIGHT); c.setFont("Helvetica-Bold", 6)
+    c.drawString(MARGIN + 4*mm, H - 139*mm, "SUBMISSION DETAILS")
+
     meta = [
-        ("Full Name",      name),
-        ("Country",        data.get("country", "—")),
-        ("Visa Purpose",   (data.get("reason") or "—")[:55]),
-        ("Accounts",       f'{len(data.get("accounts", []))} account(s)'),
-        ("Posts Analyzed", str(data.get("posts_analyzed", 0))),
-        ("Report Date",    datetime.now().strftime("%d %b, %Y")),
+        ("FULL NAME",      name[:48],                               "COUNTRY",        data.get("country", "—")),
+        ("EMAIL",          (data.get("email") or "—")[:40],         "TIMELINE",       (data.get("timeline") or "—")[:30]),
+        ("VISA PURPOSE",   (data.get("reason") or "—")[:55],        "POSTS ANALYZED", str(data.get("posts_analyzed", 0))),
+        ("REPORT DATE",    datetime.now().strftime("%d %b, %Y"),    "ACCOUNTS",       f'{len(data.get("accounts", []))} account(s)'),
     ]
-    lx = [MARGIN + 4*mm, W/2 + 6*mm]
-    vx = [MARGIN + 36*mm, W/2 + 42*mm]
-    sy = H - 149*mm
-    for i, (k, v) in enumerate(meta):
-        col, row = i % 2, i // 2
-        y = sy - row * 10*mm
-        c.setFillColor(GRAY_500); c.setFont("Helvetica", 6.5)
-        c.drawString(lx[col], y, k.upper())
-        c.setFillColor(WHITE); c.setFont("Helvetica-Bold", 8)
-        c.drawString(vx[col], y, str(v))
+    col_lx = [MARGIN + 4*mm,  W/2 + 6*mm]
+    col_vx = [MARGIN + 30*mm, W/2 + 30*mm]
+    row_y  = H - 148*mm
+    for _row in meta:
+        for _ci in range(2):
+            _lbl, _val = _row[_ci * 2], _row[_ci * 2 + 1]
+            if not _lbl:
+                continue
+            c.setFillColor(GRAY_500); c.setFont("Helvetica", 6)
+            c.drawString(col_lx[_ci], row_y, _lbl)
+            c.setFillColor(WHITE); c.setFont("Helvetica-Bold", 7.5)
+            c.drawString(col_vx[_ci], row_y, str(_val))
+        row_y -= 9*mm
+
+    # ── Platforms Analyzed ────────────────────────────────────────────────────
+    c.setFillColor(BLUE_LIGHT); c.setFont("Helvetica-Bold", 6)
+    c.drawString(MARGIN + 4*mm, row_y - 2*mm, "PLATFORMS ANALYZED")
+
+    _plat_map_cv = {
+        "twitter": "Twitter/X", "x": "Twitter/X", "instagram": "Instagram",
+        "tiktok": "TikTok", "linkedin": "LinkedIn", "facebook": "Facebook", "youtube": "YouTube",
+    }
+    _plat_parts = []
+    for _a in data.get("accounts", [])[:6]:
+        _p = _plat_map_cv.get((_a.get("platform") or "").lower(), (_a.get("platform") or "").title())
+        _h = (_a.get("handle") or "").lstrip("@")[:22]
+        _plat_parts.append(f"{_p}: @{_h}" if _h else _p)
+    _plat_str = "   •   ".join(_plat_parts) if _plat_parts else "—"
+    c.setFillColor(WHITE); c.setFont("Helvetica", 7.5)
+    c.drawString(MARGIN + 4*mm, row_y - 10*mm, _plat_str[:95])
 
     # Score gauge cards
-    gy = H - 208*mm
+    gy = H - 222*mm
     for px_pos, lbl, key in [
         (W*0.22, "POLITICAL RISK", "political"),
         (W*0.50, "CONTENT RISK",   "content"),
@@ -406,54 +427,57 @@ def _flagged_card(fp: dict, S: dict) -> Table:
     rbd_fp = risk_border(lvl)
     emoji  = "🚨" if lvl == "HIGH" else "⚠️"
 
-    link_line = f'<font color="#64748B">📱 Posted on {plat} • {date}</font>'
-    if url:
-        link_line += (f'   <link href="{url}">'
-                      f'<font color="#1E40AF"><b>  🔗 View Original Post →</b></font></link>'
-                      f'<br/><font color="#94A3B8" size="7">{url}</font>')
+    meta_line = f'<font color="#64748B">📱 {plat} &nbsp;•&nbsp; {date}</font>'
 
     badge_para = Paragraph(
-        f'{emoji} {lvl} RISK: {cat}',
+        f'{emoji} {lvl} RISK — {cat}',
         ParagraphStyle("badge", fontName="Helvetica-Bold", fontSize=8,
                        textColor=WHITE, leading=11))
 
     cw = CONTENT_W - 2
 
-    card = Table([
+    rows = [
         [Paragraph(f'"{text}"', S["quote"])],
-        [Paragraph(link_line, S["small"])],
+        [Paragraph(meta_line, S["small"])],
         [badge_para],
         [Paragraph(expl, S["body"])],
-    ], colWidths=[cw])
-
-    card.setStyle(TableStyle([
-        # Quote row — light bg
+    ]
+    style_cmds = [
+        # Quote row
         ("BACKGROUND",    (0,0),(0,0), GRAY_50),
-        ("TOPPADDING",    (0,0),(0,0), 8),
-        ("BOTTOMPADDING", (0,0),(0,0), 8),
-        ("LEFTPADDING",   (0,0),(0,0), 10),
-        ("RIGHTPADDING",  (0,0),(0,0), 10),
-        # Link row
+        ("TOPPADDING",    (0,0),(0,0), 8), ("BOTTOMPADDING", (0,0),(0,0), 8),
+        ("LEFTPADDING",   (0,0),(0,0), 10), ("RIGHTPADDING",  (0,0),(0,0), 10),
+        # Meta row
         ("BACKGROUND",    (0,1),(0,1), WHITE),
-        ("TOPPADDING",    (0,1),(0,1), 4),
-        ("BOTTOMPADDING", (0,1),(0,1), 3),
-        ("LEFTPADDING",   (0,1),(0,1), 10),
-        ("RIGHTPADDING",  (0,1),(0,1), 8),
-        # Badge row — colored bg
+        ("TOPPADDING",    (0,1),(0,1), 4), ("BOTTOMPADDING", (0,1),(0,1), 3),
+        ("LEFTPADDING",   (0,1),(0,1), 10), ("RIGHTPADDING",  (0,1),(0,1), 8),
+        # Badge row
         ("BACKGROUND",    (0,2),(0,2), rc_fp),
-        ("TOPPADDING",    (0,2),(0,2), 5),
-        ("BOTTOMPADDING", (0,2),(0,2), 5),
-        ("LEFTPADDING",   (0,2),(0,2), 10),
-        ("RIGHTPADDING",  (0,2),(0,2), 8),
+        ("TOPPADDING",    (0,2),(0,2), 5), ("BOTTOMPADDING", (0,2),(0,2), 5),
+        ("LEFTPADDING",   (0,2),(0,2), 10), ("RIGHTPADDING",  (0,2),(0,2), 8),
         # Explanation row
         ("BACKGROUND",    (0,3),(0,3), WHITE),
-        ("TOPPADDING",    (0,3),(0,3), 6),
-        ("BOTTOMPADDING", (0,3),(0,3), 6),
-        ("LEFTPADDING",   (0,3),(0,3), 10),
-        ("RIGHTPADDING",  (0,3),(0,3), 10),
-        # Outer border
-        ("BOX",           (0,0),(0,-1), 1, rbd_fp),
-    ]))
+        ("TOPPADDING",    (0,3),(0,3), 6), ("BOTTOMPADDING", (0,3),(0,3), 6),
+        ("LEFTPADDING",   (0,3),(0,3), 10), ("RIGHTPADDING",  (0,3),(0,3), 10),
+    ]
+
+    if url:
+        url_para = Paragraph(
+            f'<link href="{url}"><font color="white"><b>🔗  Click to Open Original Post  →</b></font></link>'
+            f'<br/><font color="#93C5FD" size="6.5">{url[:90]}</font>',
+            ParagraphStyle("url_btn", fontName="Helvetica-Bold", fontSize=8.5,
+                           textColor=WHITE, leading=13))
+        rows.append([url_para])
+        style_cmds += [
+            ("BACKGROUND",    (0,4),(0,4), BLUE_ACC),
+            ("TOPPADDING",    (0,4),(0,4), 7), ("BOTTOMPADDING", (0,4),(0,4), 7),
+            ("LEFTPADDING",   (0,4),(0,4), 12), ("RIGHTPADDING",  (0,4),(0,4), 8),
+        ]
+
+    style_cmds.append(("BOX", (0,0),(0,-1), 1, rbd_fp))
+
+    card = Table(rows, colWidths=[cw])
+    card.setStyle(TableStyle(style_cmds))
     return card
 
 

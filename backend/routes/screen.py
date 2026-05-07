@@ -232,8 +232,10 @@ async def run_screening_job(report_id: str, submission_data: dict):
 
             # Enrich with submission metadata for PDF
             analysis["name"]     = submission_data["name"]
+            analysis["email"]    = submission_data.get("email", "")
             analysis["country"]  = submission_data["country"]
             analysis["reason"]   = submission_data["reason"]
+            analysis["timeline"] = submission_data.get("timeline", "")
             analysis["accounts"] = accounts
 
             # 3a. Fetch profile images for each account (non-blocking failures ignored)
