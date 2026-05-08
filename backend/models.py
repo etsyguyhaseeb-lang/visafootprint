@@ -35,6 +35,14 @@ class Report(Base):
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class FreeIPUsage(Base):
+    __tablename__ = "free_ip_usage"
+
+    id         = Column(String, primary_key=True, default=new_id)
+    ip_address = Column(String, nullable=False, unique=True, index=True)
+    used_at    = Column(DateTime, default=datetime.utcnow)
+
+
 class PaidOrder(Base):
     __tablename__ = "paid_orders"
 

@@ -3,8 +3,7 @@ import json
 import os
 import subprocess
 import sys
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -18,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from backend.database import get_db
-from backend.models import PaidOrder, Report, Submission
+from backend.models import FreeIPUsage, PaidOrder, Report, Submission
 
 router = APIRouter()
 
@@ -28,9 +27,7 @@ SHEETS_WEBHOOK    = os.getenv("GOOGLE_SHEETS_WEBHOOK_URL", "")
 # ── Tier account limits ───────────────────────────────────────────────────────
 TIER_ACCOUNT_LIMITS = {"free": 1, "standard": 3, "attorney": 10}
 
-# ── IP rate limiting (in-memory; survives restarts poorly but sufficient for MVP)
-_ip_log: dict[str, list[datetime]] = defaultdict(list)
-IP_WINDOW = timedelta(hours=24)
+# ── Free-tier IP tracking is persisted in DB (FreeIPUsage table) ──────────────
 
 # ── Disposable / temp-mail domain blocklist ───────────────────────────────────
 DISPOSABLE_DOMAINS = {
@@ -54,20 +51,9 @@ def _get_client_ip(request: Request) -> str:
     if fwd:
         return fwd.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
-
-def _ip_free_allowed(ip: str) -> bool:
-    now = datetime.utcnow()
-    cutoff = now - IP_WINDOW
-    _ip_log[ip] = [t for t in _ip_log[ip] if t > cutoff]
-    return len(_ip_log[ip]) < IP_FREE_MAX_PER_DAY
-
-def _record_ip(ip: str):
-    _ip_log[ip].append(datetime.utcnow())
-PROJECT_ROOT      = str(Path(__file__).resolve().parents[2])
-MAX_ACCOUNTS             = 10
-FREE_SUBMISSIONS_PER_EMAIL = 1   # free tier: 1 scan per email, ever
-IP_FREE_MAX_PER_DAY        = 1   # free tier: 1 scan per IP per 24 h
-SCRAPE_TIMEOUT    = 420  # 7 min — must be > APIFY_TIMEOUT (300s) + startup overhead
+PROJECT_ROOT   = str(Path(__file__).resolve().parents[2])
+MAX_ACCOUNTS   = 10
+SCRAPE_TIMEOUT = 420  # 7 min — must be > APIFY_TIMEOUT (300s) + startup overhead
 PROFILE_IMGS_DIR  = ".tmp/profile_images"
 SCREENSHOTS_DIR   = ".tmp/screenshots"
 # Playwright is installed in the Railway Docker image — screenshots enabled by default.
@@ -367,20 +353,14 @@ async def submit_screening(
     is_free = req.tier == "free"
 
     if is_free:
-        # Free tier: 1 scan per IP per 24h
-        if not _ip_free_allowed(client_ip):
+        # Free tier: 1 scan per device (IP), lifetime — checked in DB so it survives restarts
+        ip_used = await db.execute(
+            select(FreeIPUsage).where(FreeIPUsage.ip_address == client_ip)
+        )
+        if ip_used.scalar_one_or_none():
             raise HTTPException(
                 status_code=429,
                 detail="UPGRADE_REQUIRED: You've used your free scan. Upgrade to Standard ($49), Attorney-Reviewed ($199), or Monitor ($19/mo) to continue.",
-            )
-        # Free tier: 1 scan per email, ever
-        email_count = await db.execute(
-            select(func.count()).where(Submission.email == req.email)
-        )
-        if (email_count.scalar() or 0) >= FREE_SUBMISSIONS_PER_EMAIL:
-            raise HTTPException(
-                status_code=429,
-                detail="UPGRADE_REQUIRED: This email has already used the free scan. Upgrade to Standard ($49), Attorney-Reviewed ($199), or Monitor ($19/mo) to run more scans.",
             )
     else:
         # Paid tier: verify payment record exists for this email
@@ -419,6 +399,11 @@ async def submit_screening(
 
     report = Report(submission_id=submission.id, status="queued")
     db.add(report)
+
+    # Record IP for free tier so this device can never get another free scan
+    if is_free:
+        db.add(FreeIPUsage(ip_address=client_ip))
+
     await db.commit()
     await db.refresh(report)
 
@@ -432,7 +417,6 @@ async def submit_screening(
         "accounts": [a.model_dump() for a in req.accounts],
     }
 
-    _record_ip(client_ip)
     background_tasks.add_task(run_screening_job, report.id, submission_data)
 
     # Log lead to Google Sheets (fire-and-forget, never blocks response)
