@@ -22,6 +22,7 @@ from backend.models import Report, Submission
 router = APIRouter()
 
 REPORTS_DIR       = os.getenv("REPORTS_DIR", ".tmp/reports")
+SHEETS_WEBHOOK    = os.getenv("GOOGLE_SHEETS_WEBHOOK_URL", "")
 PROJECT_ROOT      = str(Path(__file__).resolve().parents[2])
 MAX_ACCOUNTS      = 10
 MAX_SUBMISSIONS_PER_EMAIL = 3
@@ -283,6 +284,18 @@ async def run_screening_job(report_id: str, submission_data: dict):
         await db.commit()
 
 
+# ── Google Sheets lead logger (fire-and-forget) ───────────────────────────────
+
+async def _log_lead_to_sheets(payload: dict):
+    if not SHEETS_WEBHOOK:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            await client.post(SHEETS_WEBHOOK, json=payload)
+    except Exception:
+        pass  # never block the screening flow
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/screen")
@@ -328,6 +341,21 @@ async def submit_screening(
     }
 
     background_tasks.add_task(run_screening_job, report.id, submission_data)
+
+    # Log lead to Google Sheets (fire-and-forget, never blocks response)
+    accounts_str = " | ".join(
+        f"{a.platform}: {a.handle}" for a in req.accounts if a.handle.strip()
+    )
+    background_tasks.add_task(_log_lead_to_sheets, {
+        "timestamp":  datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "name":       req.name,
+        "email":      req.email,
+        "country":    req.country,
+        "accounts":   accounts_str,
+        "reason":     req.reason,
+        "timeline":   req.timeline,
+        "job_id":     report.id,
+    })
 
     return {"job_id": report.id, "status": "queued"}
 
