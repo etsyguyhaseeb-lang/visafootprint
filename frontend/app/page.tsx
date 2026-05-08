@@ -104,8 +104,13 @@ export default function HomePage() {
             <div className={s.statText}><strong>Countries served</strong>Applicants from every region</div>
           </div>
           <div className={s.stat}>
-            <div className={s.statNum}>§212</div>
-            <div className={s.statText}><strong>INA-grounded</strong>DS-160 &amp; inadmissibility analysis</div>
+            <div className={s.statNum} style={{ fontSize: 28, display: "flex", alignItems: "center" }}>
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div className={s.statText}><strong>No Password</strong>Complete Privacy</div>
           </div>
           <div className={s.stat}>
             <div className={s.statNum}>&lt;3m</div>
