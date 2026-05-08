@@ -19,11 +19,22 @@ const BrandMark = () => (
     flexShrink: 0,
   }}>
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path d="M9 21c-1.5 0-2.5-1-2.5-2.5 0-1.2.6-2.3 1.4-3.5.9-1.4 1.6-2.5 1.6-4.5 0-3.5 1.5-6 4-6 2 0 3.5 1.8 3.5 4.5 0 2.5-1 4-2 5.5-1 1.5-2 2.8-2 4.5 0 1.3-1 2-2 2H9z" fill="#F5F1E8"/>
-      <circle cx="6" cy="6" r="1.4" fill="#F5F1E8"/>
-      <circle cx="9" cy="3.5" r="1.2" fill="#F5F1E8"/>
-      <circle cx="13" cy="2.8" r="1.1" fill="#F5F1E8"/>
-      <circle cx="17" cy="3.8" r="1" fill="#F5F1E8"/>
+      {/* pillar */}
+      <line x1="12" y1="4.5" x2="12" y2="20" stroke="#F5F1E8" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* beam */}
+      <line x1="5" y1="8" x2="19" y2="8" stroke="#F5F1E8" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* left chain */}
+      <line x1="7.5" y1="8" x2="7.5" y2="13" stroke="#F5F1E8" strokeWidth="1.1" strokeLinecap="round"/>
+      {/* right chain */}
+      <line x1="16.5" y1="8" x2="16.5" y2="13" stroke="#F5F1E8" strokeWidth="1.1" strokeLinecap="round"/>
+      {/* left pan */}
+      <path d="M4.5 13 Q7.5 16.5 10.5 13" stroke="#F5F1E8" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      {/* right pan */}
+      <path d="M13.5 13 Q16.5 16.5 19.5 13" stroke="#F5F1E8" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      {/* base */}
+      <line x1="9.5" y1="20" x2="14.5" y2="20" stroke="#F5F1E8" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* top knob */}
+      <circle cx="12" cy="4.5" r="1.1" fill="#F5F1E8"/>
     </svg>
   </span>
 );

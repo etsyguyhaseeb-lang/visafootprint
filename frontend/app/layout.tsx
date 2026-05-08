@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   description:
     "AI-powered social media screening for U.S. visa applicants. Scan your profiles against INA §212 grounds of inadmissibility. Free 1-account scan.",
   keywords: "visa screening, social media analysis, US visa, immigration, USCIS, INA 212, visa footprint",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   openGraph: {
     title: "VisaFootprint — Find what USCIS will find. Before they find it.",
     description: "AI-powered social media screening for U.S. visa applicants. Free scan in under 3 minutes.",

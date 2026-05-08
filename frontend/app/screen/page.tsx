@@ -59,12 +59,26 @@ const inputCls = `
 
 const VisaFootprintMark = () => (
   <div style={{
-    width: 48, height: 48, background: "var(--ink)", borderRadius: 12,
+    width: 52, height: 52, background: "var(--ink)", borderRadius: 13,
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   }}>
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-      <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="var(--paper)" opacity="0.9"/>
-      <path d="M9 12l2 2 4-4" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      {/* pillar */}
+      <line x1="12" y1="4.5" x2="12" y2="20" stroke="#F5F1E8" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* beam */}
+      <line x1="5" y1="8" x2="19" y2="8" stroke="#F5F1E8" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* left chain */}
+      <line x1="7.5" y1="8" x2="7.5" y2="13" stroke="#F5F1E8" strokeWidth="1.1" strokeLinecap="round"/>
+      {/* right chain */}
+      <line x1="16.5" y1="8" x2="16.5" y2="13" stroke="#F5F1E8" strokeWidth="1.1" strokeLinecap="round"/>
+      {/* left pan */}
+      <path d="M4.5 13 Q7.5 16.5 10.5 13" stroke="#F5F1E8" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      {/* right pan */}
+      <path d="M13.5 13 Q16.5 16.5 19.5 13" stroke="#F5F1E8" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      {/* base */}
+      <line x1="9.5" y1="20" x2="14.5" y2="20" stroke="#F5F1E8" strokeWidth="1.6" strokeLinecap="round"/>
+      {/* top knob */}
+      <circle cx="12" cy="4.5" r="1.1" fill="#F5F1E8"/>
     </svg>
   </div>
 );
@@ -444,8 +458,14 @@ export default function ScreenPage() {
                     <div style={{ width: 80, height: 80, borderRadius: "50%", border: "3px solid rgba(14,23,38,0.1)", borderTopColor: "var(--ink)", animation: "spin 1s linear infinite" }} />
                     <div style={{ position: "absolute" }}>
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="var(--ink)" opacity="0.15"/>
-                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" stroke="var(--ink)" strokeWidth="1.5" fill="none"/>
+                        <line x1="12" y1="4.5" x2="12" y2="20" stroke="var(--ink)" strokeWidth="1.6" strokeLinecap="round"/>
+                        <line x1="5" y1="8" x2="19" y2="8" stroke="var(--ink)" strokeWidth="1.6" strokeLinecap="round"/>
+                        <line x1="7.5" y1="8" x2="7.5" y2="13" stroke="var(--ink)" strokeWidth="1.1" strokeLinecap="round"/>
+                        <line x1="16.5" y1="8" x2="16.5" y2="13" stroke="var(--ink)" strokeWidth="1.1" strokeLinecap="round"/>
+                        <path d="M4.5 13 Q7.5 16.5 10.5 13" stroke="var(--ink)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                        <path d="M13.5 13 Q16.5 16.5 19.5 13" stroke="var(--ink)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                        <line x1="9.5" y1="20" x2="14.5" y2="20" stroke="var(--ink)" strokeWidth="1.6" strokeLinecap="round"/>
+                        <circle cx="12" cy="4.5" r="1.1" fill="var(--ink)"/>
                       </svg>
                     </div>
                   </div>
