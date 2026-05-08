@@ -255,15 +255,18 @@ async def run_screening_job(report_id: str, submission_data: dict):
                     posts = await scrape_account_subprocess(platform, acc.get("handle", ""))
                 all_posts.extend(posts)
 
-            # 2. AI analysis (blocking — run in thread pool)
+            # 2. AI analysis (blocking — run in thread pool, 4-min hard cap)
             loop = asyncio.get_event_loop()
-            analysis = await loop.run_in_executor(
-                None,
-                analyze_posts,
-                all_posts,
-                submission_data["name"],
-                submission_data["country"],
-                submission_data["reason"],
+            analysis = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    analyze_posts,
+                    all_posts,
+                    submission_data["name"],
+                    submission_data["country"],
+                    submission_data["reason"],
+                ),
+                timeout=240.0,
             )
 
             # Enrich with submission metadata for PDF
@@ -299,10 +302,13 @@ async def run_screening_job(report_id: str, submission_data: dict):
                     if url and url in screenshots:
                         fp["screenshot_path"] = screenshots[url]
 
-            # 4. Generate PDF (blocking — run in thread pool)
+            # 4. Generate PDF (blocking — run in thread pool, 60-sec cap)
             Path(REPORTS_DIR).mkdir(parents=True, exist_ok=True)
             pdf_path = f"{REPORTS_DIR}/{report_id}.pdf"
-            await loop.run_in_executor(None, generate_pdf, analysis, pdf_path)
+            await asyncio.wait_for(
+                loop.run_in_executor(None, generate_pdf, analysis, pdf_path),
+                timeout=60.0,
+            )
 
             report.status      = "done"
             report.report_json = analysis

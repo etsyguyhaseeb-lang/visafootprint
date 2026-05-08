@@ -13,7 +13,7 @@ from openai import OpenAI
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=180.0)
 
 SYSTEM_PROMPT = """You are an expert immigration compliance analyst specializing in US visa social media screening. You think exactly like a conservative USCIS consular officer reviewing social media.
 
