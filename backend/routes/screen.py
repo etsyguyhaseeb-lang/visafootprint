@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from backend.database import get_db
-from backend.models import Report, Submission
+from backend.models import PaidOrder, Report, Submission
 
 router = APIRouter()
 
@@ -30,8 +30,7 @@ TIER_ACCOUNT_LIMITS = {"free": 1, "standard": 3, "attorney": 10}
 
 # ── IP rate limiting (in-memory; survives restarts poorly but sufficient for MVP)
 _ip_log: dict[str, list[datetime]] = defaultdict(list)
-IP_MAX_PER_DAY = 3
-IP_WINDOW      = timedelta(hours=24)
+IP_WINDOW = timedelta(hours=24)
 
 # ── Disposable / temp-mail domain blocklist ───────────────────────────────────
 DISPOSABLE_DOMAINS = {
@@ -56,17 +55,18 @@ def _get_client_ip(request: Request) -> str:
         return fwd.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
-def _ip_allowed(ip: str) -> bool:
+def _ip_free_allowed(ip: str) -> bool:
     now = datetime.utcnow()
     cutoff = now - IP_WINDOW
     _ip_log[ip] = [t for t in _ip_log[ip] if t > cutoff]
-    return len(_ip_log[ip]) < IP_MAX_PER_DAY
+    return len(_ip_log[ip]) < IP_FREE_MAX_PER_DAY
 
 def _record_ip(ip: str):
     _ip_log[ip].append(datetime.utcnow())
 PROJECT_ROOT      = str(Path(__file__).resolve().parents[2])
-MAX_ACCOUNTS      = 10
-MAX_SUBMISSIONS_PER_EMAIL = 3
+MAX_ACCOUNTS             = 10
+FREE_SUBMISSIONS_PER_EMAIL = 1   # free tier: 1 scan per email, ever
+IP_FREE_MAX_PER_DAY        = 1   # free tier: 1 scan per IP per 24 h
 SCRAPE_TIMEOUT    = 420  # 7 min — must be > APIFY_TIMEOUT (300s) + startup overhead
 PROFILE_IMGS_DIR  = ".tmp/profile_images"
 SCREENSHOTS_DIR   = ".tmp/screenshots"
@@ -364,30 +364,46 @@ async def submit_screening(
             detail="Disposable or temporary email addresses are not allowed. Please use a real email.",
         )
 
-    # IP rate limit: max 3 submissions per IP per 24 hours
-    if not _ip_allowed(client_ip):
-        raise HTTPException(
-            status_code=429,
-            detail="Too many submissions from your network. Please try again in 24 hours.",
-        )
+    is_free = req.tier == "free"
 
-    # Tier account limit enforcement
+    if is_free:
+        # Free tier: 1 scan per IP per 24h
+        if not _ip_free_allowed(client_ip):
+            raise HTTPException(
+                status_code=429,
+                detail="UPGRADE_REQUIRED: You've used your free scan. Upgrade to Standard ($49), Attorney-Reviewed ($199), or Monitor ($19/mo) to continue.",
+            )
+        # Free tier: 1 scan per email, ever
+        email_count = await db.execute(
+            select(func.count()).where(Submission.email == req.email)
+        )
+        if (email_count.scalar() or 0) >= FREE_SUBMISSIONS_PER_EMAIL:
+            raise HTTPException(
+                status_code=429,
+                detail="UPGRADE_REQUIRED: This email has already used the free scan. Upgrade to Standard ($49), Attorney-Reviewed ($199), or Monitor ($19/mo) to run more scans.",
+            )
+    else:
+        # Paid tier: verify payment record exists for this email
+        paid_check = await db.execute(
+            select(PaidOrder).where(
+                PaidOrder.email == req.email,
+                PaidOrder.tier  == req.tier,
+                PaidOrder.paid  == True,
+            )
+        )
+        if not paid_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=402,
+                detail=f"UPGRADE_REQUIRED: No payment found for the {req.tier.title()} plan. Please complete your purchase first.",
+            )
+
+    # Enforce account count for tier
     tier_limit = TIER_ACCOUNT_LIMITS.get(req.tier, 1)
     valid_accounts = [a for a in req.accounts if a.handle.strip()]
     if len(valid_accounts) > tier_limit:
         raise HTTPException(
             status_code=400,
             detail=f"Your plan allows up to {tier_limit} account(s). Upgrade to add more.",
-        )
-
-    # Rate limit: max submissions per email
-    count_result = await db.execute(
-        select(func.count()).where(Submission.email == req.email)
-    )
-    if (count_result.scalar() or 0) >= MAX_SUBMISSIONS_PER_EMAIL:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Maximum {MAX_SUBMISSIONS_PER_EMAIL} submissions per email address.",
         )
 
     submission = Submission(

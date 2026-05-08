@@ -7,6 +7,7 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const TIER_LIMITS: Record<string, number> = { free: 1, standard: 3, attorney: 10, monitor: 3 };
 import { Plus, Trash2, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 import { submitScreening, getStatus, type AccountInput } from "@/lib/api";
+import CheckoutButton from "@/components/CheckoutButton";
 
 const COUNTRIES = [
   "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria",
@@ -410,17 +411,28 @@ export default function ScreenPage() {
                       <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/{maxAccounts})
                     </button>
                   ) : (
-                    <div style={{ border: "1px solid rgba(184,146,74,0.35)", borderRadius: 10, padding: "12px 16px", background: "rgba(184,146,74,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                        <strong style={{ color: "var(--ink)" }}>Free plan:</strong> 1 account included.
-                      </span>
-                      <a href="/#pricing" style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
-                        Upgrade → 3 accounts
-                      </a>
+                    <div style={{ border: "1px solid rgba(184,146,74,0.35)", borderRadius: 12, padding: "16px", background: "rgba(184,146,74,0.05)" }}>
+                      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gold)", margin: "0 0 12px", fontWeight: 600 }}>
+                        Free plan — 1 account only. Upgrade to scan more.
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <CheckoutButton tier="standard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                          <span>Standard Scan — 3 accounts</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.8 }}>$49 one-time →</span>
+                        </CheckoutButton>
+                        <CheckoutButton tier="attorney" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--ink)", border: "1.5px solid rgba(14,23,38,0.2)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                          <span>Attorney-Reviewed — 10 accounts</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.7 }}>$199 one-time →</span>
+                        </CheckoutButton>
+                        <CheckoutButton tier="monitor" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--gold)", border: "1.5px solid rgba(184,146,74,0.4)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                          <span>VisaFootprint Monitor — 3 accounts</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.8 }}>$19/mo →</span>
+                        </CheckoutButton>
+                      </div>
                     </div>
                   )}
                   <div style={{ background: "rgba(14,23,38,0.04)", border: "1px solid rgba(14,23,38,0.1)", borderRadius: 10, padding: "14px 16px", fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.6 }}>
-                    <strong style={{ color: "var(--ink)" }}>Privacy Notice:</strong> We only analyze publicly visible posts. We do not require passwords or store credentials. Your data is encrypted and used solely for screening. Each email allows up to 3 submissions.
+                    <strong style={{ color: "var(--ink)" }}>Privacy Notice:</strong> We only analyze publicly visible posts. We do not require passwords or store credentials. Your data is encrypted and used solely for screening purposes.
                   </div>
                 </div>
               )}
