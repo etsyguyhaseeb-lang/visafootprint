@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 from .database import Base
 
 
@@ -33,3 +33,14 @@ class Report(Base):
     error_message = Column(Text, nullable=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PaidOrder(Base):
+    __tablename__ = "paid_orders"
+
+    id                = Column(String, primary_key=True, default=new_id)
+    stripe_session_id = Column(String, unique=True, nullable=False, index=True)
+    email             = Column(String, nullable=True, index=True)
+    tier              = Column(String, nullable=False)   # standard|attorney|monitor
+    paid              = Column(Boolean, default=False)
+    created_at        = Column(DateTime, default=datetime.utcnow)

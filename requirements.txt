@@ -14,3 +14,4 @@ instaloader
 pypdf
 playwright
 yt-dlp
+stripe

@@ -10,6 +10,7 @@ load_dotenv()
 from backend.database import init_db
 from backend.routes.screen import router as screen_router
 from backend.routes.report import router as report_router
+from backend.routes.stripe_routes import router as stripe_router
 
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ app.add_middleware(
 
 app.include_router(screen_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
+app.include_router(stripe_router, prefix="/api")
 
 
 @app.get("/health")

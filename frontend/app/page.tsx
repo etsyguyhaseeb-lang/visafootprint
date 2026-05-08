@@ -1,5 +1,6 @@
 import Link from "next/link";
 import s from "./home.module.css";
+import CheckoutButton from "@/components/CheckoutButton";
 
 export default function HomePage() {
   return (
@@ -215,7 +216,7 @@ export default function HomePage() {
                 <li>Post-by-post action plan</li>
                 <li>Priority processing · 48hr turnaround</li>
               </ul>
-              <Link href="/screen" className={s.tierCta}>Run Standard Scan — $49</Link>
+              <CheckoutButton tier="standard" className={s.tierCta}>Run Standard Scan — $49</CheckoutButton>
             </div>
 
             <div className={s.tier}>
@@ -236,7 +237,7 @@ export default function HomePage() {
                 <li>Free re-scan within 60 days</li>
                 <li>5-business-day turnaround · Rush available</li>
               </ul>
-              <Link href="/screen" className={s.tierCta}>Get Attorney Review — $199</Link>
+              <CheckoutButton tier="attorney" className={s.tierCta}>Get Attorney Review — $199</CheckoutButton>
             </div>
           </div>
 
@@ -247,7 +248,7 @@ export default function HomePage() {
             </div>
             <div className={s.msCta}>
               <div className={s.msPrice}>$19<small>/mo</small></div>
-              <Link href="/screen" className={s.monitorCta}>Add monitoring</Link>
+              <CheckoutButton tier="monitor" className={s.monitorCta}>Add monitoring</CheckoutButton>
             </div>
           </div>
         </div>

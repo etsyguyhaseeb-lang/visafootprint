@@ -1,7 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const TIER_LIMITS: Record<string, number> = { free: 1, standard: 3, attorney: 10, monitor: 3 };
 import { Plus, Trash2, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 import { submitScreening, getStatus, type AccountInput } from "@/lib/api";
 
@@ -33,7 +36,6 @@ const PLATFORMS = ["Twitter/X","Instagram","TikTok","LinkedIn","Facebook","YouTu
 const AUTO_SCRAPE_PLATFORMS = new Set(["Twitter/X","Instagram","TikTok","LinkedIn","Facebook","YouTube"]);
 
 // Account limits per tier — free plan = 1, standard = 3, attorney = 10
-const FREE_ACCOUNT_LIMIT = 1;
 const REASONS = [
   "To improve my chances of getting a VISA",
   "To detect any objectionable content I may have overlooked",
@@ -88,10 +90,27 @@ const VisaFootprintMark = () => (
 
 export default function ScreenPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [error, setError] = useState("");
   const [processingMsg, setProcessingMsg] = useState("Analyzing your profiles…");
+  const [tier, setTier] = useState<"free" | "standard" | "attorney" | "monitor">("free");
+  const [tierVerifying, setTierVerifying] = useState(false);
+  const maxAccounts = TIER_LIMITS[tier] ?? 1;
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    if (!sessionId) return;
+    setTierVerifying(true);
+    fetch(`${BASE}/api/verify-payment?session_id=${encodeURIComponent(sessionId)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.paid && data.tier) setTier(data.tier);
+      })
+      .catch(() => {})
+      .finally(() => setTierVerifying(false));
+  }, []);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -108,7 +127,7 @@ export default function ScreenPage() {
   );
 
   const addAccount = () => {
-    if (accounts.length < FREE_ACCOUNT_LIMIT) setAccounts([...accounts, { platform: "Twitter/X", handle: "" }]);
+    if (accounts.length < maxAccounts) setAccounts([...accounts, { platform: "Twitter/X", handle: "" }]);
   };
   const removeAccount = (i: number) => {
     setAccounts(accounts.filter((_, idx) => idx !== i));
@@ -161,7 +180,7 @@ export default function ScreenPage() {
         handle: a.handle.trim(),
         ...(a.manual_posts?.trim() ? { manual_posts: a.manual_posts.trim() } : {}),
       }));
-      const res = await submitScreening({ name, email, country, accounts: validAccounts, reason, timeline, consent });
+      const res = await submitScreening({ name, email, country, accounts: validAccounts, reason, timeline, consent, tier });
       const jobId = res.job_id;
       const poll = async () => {
         const status = await getStatus(jobId);
@@ -208,8 +227,16 @@ export default function ScreenPage() {
             <span style={{ fontStyle: "italic", color: "var(--oxblood)" }}>will find — first.</span>
           </h1>
           <p style={{ fontSize: 16, color: "var(--ink-soft)", lineHeight: 1.55, margin: 0 }}>
-            Get your AI-powered visa risk report in under 3 minutes.
+            {tierVerifying ? "Verifying your payment…" : "Get your AI-powered visa risk report in under 3 minutes."}
           </p>
+          {tier !== "free" && !tierVerifying && (
+            <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(63,107,58,0.1)", border: "1px solid rgba(63,107,58,0.3)", borderRadius: 999, padding: "6px 16px" }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--flag-green)", display: "inline-block" }} />
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--flag-green)", fontWeight: 600 }}>
+                {tier === "standard" ? "Standard Plan — 3 accounts unlocked" : tier === "attorney" ? "Attorney Plan — 10 accounts unlocked" : "Monitor Plan — 3 accounts unlocked"}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Progress stepper */}
@@ -378,9 +405,9 @@ export default function ScreenPage() {
                       </div>
                     ))}
                   </div>
-                  {accounts.length < FREE_ACCOUNT_LIMIT ? (
+                  {accounts.length < maxAccounts ? (
                     <button onClick={addAccount} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--ink)", background: "none", border: "1px dashed rgba(14,23,38,0.25)", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "Inter Tight, system-ui, sans-serif", width: "fit-content" }}>
-                      <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/{FREE_ACCOUNT_LIMIT})
+                      <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/{maxAccounts})
                     </button>
                   ) : (
                     <div style={{ border: "1px solid rgba(184,146,74,0.35)", borderRadius: 10, padding: "12px 16px", background: "rgba(184,146,74,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

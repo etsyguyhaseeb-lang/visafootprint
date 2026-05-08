@@ -14,6 +14,7 @@ export interface ScreeningRequest {
   reason: string;
   timeline: string;
   consent: boolean;
+  tier?: string;
 }
 
 export interface ScreeningResponse {
