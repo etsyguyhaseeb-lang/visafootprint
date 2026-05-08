@@ -314,8 +314,8 @@
 
 .stat {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
+  align-items: center;
+  gap: 16px;
 }
 
 .statNum {
@@ -325,19 +325,24 @@
   line-height: 1;
   color: var(--gold);
   letter-spacing: -0.02em;
+  min-width: 88px;
+  flex-shrink: 0;
 }
 
 .statText {
   font-size: 12.5px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: rgba(245, 241, 232, 0.85);
+  border-left: 1px solid rgba(245, 241, 232, 0.15);
+  padding-left: 16px;
 }
 
 .statText strong {
   color: var(--paper);
   display: block;
   font-weight: 600;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  font-size: 13px;
 }
 
 /* ── SHARED SECTION STYLES ── */
