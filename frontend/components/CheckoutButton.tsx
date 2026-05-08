@@ -12,39 +12,49 @@ interface Props {
 
 export default function CheckoutButton({ tier, children, className, style }: Props) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleClick = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch(`${BASE}/api/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tier }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.detail ?? "Something went wrong. Please try again.");
+        setError(data.detail ?? `Error ${res.status} — please try again.`);
         return;
       }
-      const data = await res.json();
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
+      } else {
+        setError("No checkout URL returned. Check payment configuration.");
       }
-    } catch {
-      alert("Could not connect to payment service. Please try again.");
+    } catch (e) {
+      setError("Could not reach payment service. Check your connection.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className={className}
-      style={{ cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, ...style }}
-    >
-      {loading ? "Redirecting to payment…" : children}
-    </button>
+    <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className={className}
+        style={{ cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, ...style }}
+      >
+        {loading ? "Redirecting to payment…" : children}
+      </button>
+      {error && (
+        <span style={{ fontSize: 12, color: "#c0392b", maxWidth: 320, textAlign: "center", lineHeight: 1.4 }}>
+          {error}
+        </span>
+      )}
+    </span>
   );
 }
