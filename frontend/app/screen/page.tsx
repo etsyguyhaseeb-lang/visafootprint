@@ -185,7 +185,7 @@ function ScreenPageInner() {
       const jobId = res.job_id;
       const poll = async () => {
         const status = await getStatus(jobId);
-        if (status.status === "done") { clearInterval(interval); router.push(`/report/${jobId}`); }
+        if (status.status === "done") { clearInterval(interval); router.push(`/result/${jobId}`); }
         else if (status.status === "failed") { clearInterval(interval); setError(status.error ?? "Screening failed. Please try again."); setStep(2); }
         else { setTimeout(poll, 3000); }
       };
