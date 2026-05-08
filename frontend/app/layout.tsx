@@ -4,13 +4,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "VisaScreenAI – Social Media Screening for US Visa Applicants",
+  title: "VisaFootprint — Find what USCIS will find. Before they find it.",
   description:
-    "AI-powered social media risk analysis for US visa applicants. Know your risk before your visa interview. Get a comprehensive PDF screening report in minutes.",
-  keywords: "visa screening, social media analysis, US visa, immigration, AI screening",
+    "AI-powered social media screening for U.S. visa applicants. Scan your profiles against INA §212 grounds of inadmissibility. Free 1-account scan.",
+  keywords: "visa screening, social media analysis, US visa, immigration, USCIS, INA 212, visa footprint",
   openGraph: {
-    title: "VisaScreenAI – Know Your Risk Before Your Visa Interview",
-    description: "AI-powered social media screening for US visa applicants.",
+    title: "VisaFootprint — Find what USCIS will find. Before they find it.",
+    description: "AI-powered social media screening for U.S. visa applicants. Free scan in under 3 minutes.",
     type: "website",
   },
 };

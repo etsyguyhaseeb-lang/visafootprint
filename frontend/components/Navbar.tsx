@@ -1,109 +1,99 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Menu, X } from "lucide-react";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 
 const links = [
-  { href: "/#how-it-works", label: "How It Works" },
-  { href: "/#features", label: "Features" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/#faq", label: "FAQ" },
+  { href: "/#how",     label: "How it works" },
+  { href: "/#why",     label: "Why us" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#faq",     label: "FAQ" },
 ];
 
+const BrandMark = () => (
+  <span style={{
+    width: 34, height: 34,
+    display: "grid", placeItems: "center",
+    background: "var(--ink)",
+    borderRadius: "50%",
+    flexShrink: 0,
+  }}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M9 21c-1.5 0-2.5-1-2.5-2.5 0-1.2.6-2.3 1.4-3.5.9-1.4 1.6-2.5 1.6-4.5 0-3.5 1.5-6 4-6 2 0 3.5 1.8 3.5 4.5 0 2.5-1 4-2 5.5-1 1.5-2 2.8-2 4.5 0 1.3-1 2-2 2H9z" fill="#F5F1E8"/>
+      <circle cx="6" cy="6" r="1.4" fill="#F5F1E8"/>
+      <circle cx="9" cy="3.5" r="1.2" fill="#F5F1E8"/>
+      <circle cx="13" cy="2.8" r="1.1" fill="#F5F1E8"/>
+      <circle cx="17" cy="3.8" r="1" fill="#F5F1E8"/>
+    </svg>
+  </span>
+);
+
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[#0A1628]/95 backdrop-blur-md shadow-lg shadow-black/20"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-white text-lg">VisaScreenAI</span>
-          </Link>
+    <nav style={{
+      position: "sticky", top: 0, zIndex: 50,
+      background: "rgba(245, 241, 232, 0.92)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid rgba(14, 23, 38, 0.08)",
+    }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 22, letterSpacing: "-0.01em", color: "var(--ink)", textDecoration: "none" }}>
+          <BrandMark />
+          VisaFootprint
+        </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-6">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-slate-300 hover:text-white text-sm font-medium transition-colors"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/screen"
-              className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
-            >
-              Get Screened Free
+        {/* Desktop links */}
+        <div className="hidden md:flex" style={{ gap: 28, alignItems: "center" }}>
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} style={{ color: "var(--ink)", textDecoration: "none", fontSize: 14, fontWeight: 500, transition: "color 0.2s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--oxblood)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--ink)")}>
+              {l.label}
             </Link>
-          </div>
-
-          {/* Mobile toggle */}
-          <button
-            className="md:hidden text-white p-2"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          ))}
         </div>
+
+        {/* Desktop CTA */}
+        <div className="hidden md:flex">
+          <Link href="/screen" style={{
+            padding: "10px 20px",
+            background: "var(--ink)",
+            color: "var(--paper)",
+            borderRadius: 999,
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: "none",
+            transition: "background 0.2s",
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--oxblood)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "var(--ink)")}>
+            Run a scan →
+          </Link>
+        </div>
+
+        {/* Mobile toggle */}
+        <button className="md:hidden" onClick={() => setMobileOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink)", padding: 8 }} aria-label="Toggle menu">
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
 
       {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#0A1628]/98 backdrop-blur-md border-t border-white/10"
-          >
-            <div className="px-4 py-4 space-y-3">
-              {links.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block text-slate-300 hover:text-white font-medium py-2 transition-colors"
-                >
-                  {l.label}
-                </Link>
-              ))}
-              <Link
-                href="/screen"
-                onClick={() => setMobileOpen(false)}
-                className="block text-center bg-blue-600 text-white font-semibold px-4 py-2.5 rounded-lg mt-2"
-              >
-                Get Screened Free
-              </Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {mobileOpen && (
+        <div style={{ background: "rgba(245, 241, 232, 0.98)", borderTop: "1px solid rgba(14,23,38,0.08)", padding: "16px 24px 24px" }}>
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
+              style={{ display: "block", padding: "12px 0", color: "var(--ink)", textDecoration: "none", fontWeight: 500, fontSize: 15, borderBottom: "1px solid rgba(14,23,38,0.08)" }}>
+              {l.label}
+            </Link>
+          ))}
+          <Link href="/screen" onClick={() => setMobileOpen(false)}
+            style={{ display: "block", marginTop: 16, textAlign: "center", padding: "12px 24px", background: "var(--ink)", color: "var(--paper)", borderRadius: 999, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
+            Run a scan →
+          </Link>
+        </div>
+      )}
     </nav>
   );
 }

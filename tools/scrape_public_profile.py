@@ -7,7 +7,7 @@ Priority per platform (all free, all self-hosted):
   TikTok     — yt-dlp (no auth needed)
   YouTube    — yt-dlp → YouTube Data API v3 (free quota)
   Facebook   — Playwright headless (public) → Playwright + cookies
-  LinkedIn   — manual paste only (LinkedIn blocks all bots)
+  LinkedIn   — Apify curious_coder~linkedin-posts-scraper (paid) → manual paste fallback
 
 Optional paid fallback (only activates if USE_PAID_SCRAPERS=true in .env):
   ScrapeCreators / Apify — used ONLY as last resort if all own scrapers fail
@@ -117,7 +117,10 @@ def _apify_run(actor_id: str, input_data: dict) -> list[dict]:
             f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items",
             params={"token": APIFY_TOKEN, "limit": MAX_POSTS},
             json=input_data, timeout=APIFY_TIMEOUT)
-        return r.json() if r.status_code in (200, 201) else []
+        if r.status_code not in (200, 201):
+            return []
+        data = r.json()
+        return data if isinstance(data, list) else []
     except Exception:
         return []
 
@@ -132,21 +135,25 @@ def scrape_twitter(handle: str) -> list[dict]:
         items = _sc_paginate("/v1/twitter/user-tweets", {"handle": handle},
                              items_key="tweets", next_key="nextCursor")
         if items:
-            return [{"platform": "Twitter/X",
-                     "post_text": (i.get("text") or i.get("full_text") or "").strip(),
-                     "post_url":  i.get("url") or f"https://x.com/{handle}/status/{i.get('id','')}",
-                     "posted_at": i.get("createdAt") or i.get("created_at")}
-                    for i in items if (i.get("text") or i.get("full_text") or "").strip()]
+            results = [{"platform": "Twitter/X",
+                        "post_text": (i.get("text") or i.get("full_text") or "").strip(),
+                        "post_url":  i.get("url") or f"https://x.com/{handle}/status/{i.get('id','')}",
+                        "posted_at": i.get("createdAt") or i.get("created_at")}
+                       for i in items if isinstance(i, dict) and (i.get("text") or i.get("full_text") or "").strip()]
+            if results:
+                return results
 
         apify = _apify_run("vdrmota~twitter-scraper",
                            {"startUrls": [{"url": f"https://twitter.com/{handle}"}],
                             "maxItems": MAX_POSTS})
         if apify:
-            return [{"platform": "Twitter/X",
-                     "post_text": i.get("full_text") or i.get("text") or "",
-                     "post_url":  f"https://x.com/{handle}/status/{i.get('id_str','')}",
-                     "posted_at": i.get("created_at")}
-                    for i in apify if (i.get("full_text") or i.get("text")) and not i.get("noResults")]
+            results = [{"platform": "Twitter/X",
+                        "post_text": i.get("full_text") or i.get("text") or "",
+                        "post_url":  f"https://x.com/{handle}/status/{i.get('id_str','')}",
+                        "posted_at": i.get("created_at")}
+                       for i in apify if isinstance(i, dict) and (i.get("full_text") or i.get("text")) and not i.get("noResults")]
+            if results:
+                return results
 
     # Local dev: own scrapers first
     posts = scrape_twitter_own(handle)
@@ -177,21 +184,25 @@ def scrape_instagram(handle: str) -> list[dict]:
         items = _sc_paginate("/v2/instagram/user/posts", {"handle": handle},
                              items_key="data", next_key="nextCursor")
         if items:
-            return [{"platform": "Instagram",
-                     "post_text": (p.get("caption") or p.get("text") or "").strip(),
-                     "post_url":  p.get("url") or (f"https://www.instagram.com/p/{p['shortCode']}/"
-                                                    if p.get("shortCode") else profile_url),
-                     "posted_at": p.get("timestamp") or p.get("takenAt")}
-                    for p in items if (p.get("caption") or p.get("text") or "").strip()]
+            results = [{"platform": "Instagram",
+                        "post_text": (p.get("caption") or p.get("text") or "").strip(),
+                        "post_url":  p.get("url") or (f"https://www.instagram.com/p/{p['shortCode']}/"
+                                                       if p.get("shortCode") else profile_url),
+                        "posted_at": p.get("timestamp") or p.get("takenAt")}
+                       for p in items if isinstance(p, dict) and (p.get("caption") or p.get("text") or "").strip()]
+            if results:
+                return results
 
         apify = _apify_run("apify~instagram-post-scraper",
                            {"username": [handle], "resultsLimit": MAX_POSTS})
         if apify:
-            return [{"platform": "Instagram",
-                     "post_text": (p.get("caption") or "").strip(),
-                     "post_url":  p.get("url") or profile_url,
-                     "posted_at": p.get("timestamp")}
-                    for p in apify[:MAX_POSTS] if (p.get("caption") or "").strip()]
+            results = [{"platform": "Instagram",
+                        "post_text": (p.get("caption") or "").strip(),
+                        "post_url":  p.get("url") or profile_url,
+                        "posted_at": p.get("timestamp")}
+                       for p in apify[:MAX_POSTS] if isinstance(p, dict) and (p.get("caption") or "").strip()]
+            if results:
+                return results
 
     # Local dev: instaloader fallback
     posts = scrape_instagram_own(handle)
@@ -213,12 +224,14 @@ def scrape_tiktok(handle: str) -> list[dict]:
         items = _sc_paginate("/v3/tiktok/profile/videos", {"handle": handle},
                              items_key="videos", next_key="nextCursor")
         if items:
-            return [{"platform": "TikTok",
-                     "post_text": (i.get("text") or i.get("description") or i.get("desc") or "").strip()
-                                  or "[Video — no caption]",
-                     "post_url":  i.get("url") or profile_url,
-                     "posted_at": i.get("createTime") or i.get("createTimeISO")}
-                    for i in items if i.get("id")]
+            results = [{"platform": "TikTok",
+                        "post_text": (i.get("text") or i.get("description") or i.get("desc") or "").strip()
+                                     or "[Video — no caption]",
+                        "post_url":  i.get("url") or profile_url,
+                        "posted_at": i.get("createTime") or i.get("createTimeISO")}
+                       for i in items if isinstance(i, dict) and i.get("id")]
+            if results:
+                return results
 
         apify = _apify_run("clockworks~tiktok-profile-scraper",
                            {"profiles": [f"https://www.tiktok.com/@{handle}"],
@@ -226,12 +239,14 @@ def scrape_tiktok(handle: str) -> list[dict]:
                             "shouldDownloadVideos": False,
                             "maxPostsPerProfile": MAX_POSTS})
         if apify:
-            return [{"platform": "TikTok",
-                     "post_text": (i.get("text") or i.get("desc") or "").strip() or "[Video — no caption]",
-                     "post_url":  i.get("webVideoUrl") or profile_url,
-                     "posted_at": (str(datetime.fromtimestamp(i["createTime"]))
-                                   if i.get("createTime") else i.get("createTimeISO"))}
-                    for i in apify if i.get("id") and not i.get("noResults")]
+            results = [{"platform": "TikTok",
+                        "post_text": (i.get("text") or i.get("desc") or "").strip() or "[Video — no caption]",
+                        "post_url":  i.get("webVideoUrl") or profile_url,
+                        "posted_at": (str(datetime.fromtimestamp(i["createTime"]))
+                                      if i.get("createTime") else i.get("createTimeISO"))}
+                       for i in apify if isinstance(i, dict) and i.get("id") and not i.get("noResults")]
+            if results:
+                return results
 
     # Local dev: yt-dlp fallback
     posts = scrape_tiktok_own(handle)
@@ -253,22 +268,26 @@ def scrape_facebook(handle: str) -> list[dict]:
         items = _sc_paginate("/v1/facebook/profile/posts", {"url": fb_url},
                              items_key="posts", next_key="nextCursor")
         if items:
-            return [{"platform": "Facebook",
-                     "post_text": (p.get("text") or p.get("message") or "").strip(),
-                     "post_url":  p.get("url") or fb_url,
-                     "posted_at": p.get("time") or p.get("timestamp")}
-                    for p in items if (p.get("text") or p.get("message") or "").strip()]
+            results = [{"platform": "Facebook",
+                        "post_text": (p.get("text") or p.get("message") or "").strip(),
+                        "post_url":  p.get("url") or fb_url,
+                        "posted_at": p.get("time") or p.get("timestamp")}
+                       for p in items if isinstance(p, dict) and (p.get("text") or p.get("message") or "").strip()]
+            if results:
+                return results
 
         apify = _apify_run("apify~facebook-posts-scraper",
                            {"startUrls": [{"url": fb_url}],
                             "maxPosts": MAX_POSTS, "maxPostsPerPage": MAX_POSTS,
                             "maxComments": 0, "scrapeAbout": False, "scrapeReviews": False})
         if apify:
-            return [{"platform": "Facebook",
-                     "post_text": (i.get("text") or i.get("message") or "").strip(),
-                     "post_url":  i.get("url") or fb_url,
-                     "posted_at": i.get("time") or i.get("timestamp")}
-                    for i in apify if (i.get("text") or i.get("message") or "").strip()]
+            results = [{"platform": "Facebook",
+                        "post_text": (i.get("text") or i.get("message") or "").strip(),
+                        "post_url":  i.get("url") or fb_url,
+                        "posted_at": i.get("time") or i.get("timestamp")}
+                       for i in apify if isinstance(i, dict) and (i.get("text") or i.get("message") or "").strip()]
+            if results:
+                return results
 
     # Local dev: Playwright fallback
     posts = scrape_facebook_own(handle)
@@ -333,9 +352,23 @@ def scrape_youtube(handle: str) -> list[dict]:
 # ── LinkedIn ───────────────────────────────────────────────────────────────────
 
 def scrape_linkedin(handle: str) -> list[dict]:
+    profile_url = f"https://www.linkedin.com/in/{handle}/"
+
+    if _USE_PAID:
+        apify = _apify_run("curious_coder~linkedin-posts-scraper",
+                           {"profileUrls": [profile_url], "maxPosts": MAX_POSTS})
+        if apify:
+            results = [{"platform": "LinkedIn",
+                        "post_text": (i.get("text") or i.get("commentary") or "").strip(),
+                        "post_url":  i.get("url") or profile_url,
+                        "posted_at": i.get("postedAt") or i.get("publishedAt")}
+                       for i in apify if isinstance(i, dict) and (i.get("text") or i.get("commentary") or "").strip()]
+            if results:
+                return results
+
     return _err("LinkedIn",
                 "LinkedIn blocks all automated scraping — use the 'Paste posts' option in the form",
-                f"https://www.linkedin.com/in/{handle}/")
+                profile_url)
 
 
 # ── Router ─────────────────────────────────────────────────────────────────────

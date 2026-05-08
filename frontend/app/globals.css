@@ -1,43 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --color-navy: #0A1628;
-  --color-navy-mid: #112244;
-  --color-navy-light: #1E3A5F;
-  --color-brand: #1E40AF;
-  --color-brand-light: #3B82F6;
+  --font-sans: 'Inter Tight', system-ui, sans-serif;
 }
 
 :root {
-  --navy: #0A1628;
-  --brand: #1E40AF;
-  --brand-light: #3B82F6;
+  --ink:        #0E1726;
+  --ink-soft:   #1B2741;
+  --paper:      #F5F1E8;
+  --paper-soft: #EDE7D9;
+  --oxblood:    #7A1F1F;
+  --gold:       #B8924A;
+  --flag-red:   #C83B3B;
+  --flag-amber: #C98B27;
+  --flag-green: #3F6B3A;
+  --grain:      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: #ffffff;
-  color: #0f172a;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: var(--grain);
+  pointer-events: none;
+  z-index: 100;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
 }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
-
-.hero-gradient {
-  background: linear-gradient(-45deg, #0A1628, #112244, #1E3A5F, #1E40AF);
-  background-size: 400% 400%;
-  animation: gradientShift 10s ease infinite;
-}
-
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
+::-webkit-scrollbar-track { background: var(--paper-soft); }
+::-webkit-scrollbar-thumb { background: var(--ink-soft); border-radius: 3px; }

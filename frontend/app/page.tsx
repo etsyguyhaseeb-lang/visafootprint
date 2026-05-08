@@ -1,322 +1,312 @@
-"use client";
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
-import { useRef, useState } from "react";
-import {
-  Shield, FileText, Brain, Globe, Zap, Lock,
-  CheckCircle, ChevronDown, Star, ArrowRight,
-  AlertTriangle, TrendingUp, Users
-} from "lucide-react";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.12 } } };
-
-function InView({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  return (
-    <motion.div ref={ref} variants={stagger} initial="hidden" animate={inView ? "show" : "hidden"} className={className}>
-      {children}
-    </motion.div>
-  );
-}
-
-function Hero() {
-  return (
-    <section className="hero-gradient min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 py-24">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <div className="inline-flex items-center gap-2 bg-blue-600/20 border border-blue-500/30 text-blue-300 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-            <Brain className="w-4 h-4" />
-            #1 Social Media Scanner for Visa Applicants
-          </div>
-        </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-white leading-tight mb-6"
-        >
-          Know Your Risk<br />
-          <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Before Your Visa Interview
-          </span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
-          className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
-        >
-          US visa authorities now screen social media. Our AI analyzes your profiles for red flags
-          and generates a detailed risk report — so you can fix issues before they cost you your visa.
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center mb-14"
-        >
-          <Link href="/screen" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-xl text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl shadow-blue-600/30">
-            Screen My Profile Now <ArrowRight className="w-5 h-5" />
-          </Link>
-          <Link href="/pricing" className="inline-flex items-center gap-2 border border-white/30 hover:border-white/60 text-white font-semibold px-8 py-4 rounded-xl text-lg transition-all duration-200 hover:bg-white/5">
-            View Pricing
-          </Link>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.5 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto"
-        >
-          {[["10,000+","Profiles Screened"],["99%","Accuracy Rate"],["< 3 min","Average Report Time"],["50+","Countries Served"]].map(([val,label]) => (
-            <div key={label} className="text-center">
-              <div className="text-2xl font-extrabold text-white">{val}</div>
-              <div className="text-xs text-slate-400 mt-1">{label}</div>
-            </div>
-          ))}
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.6 }}
-          className="mt-16 max-w-sm mx-auto"
-        >
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-left">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-white font-bold text-sm">Sample Report Preview</div>
-                <div className="text-slate-400 text-xs">John D. · India → USA · B1/B2 Visa</div>
-              </div>
-              <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold px-2.5 py-1 rounded-full">MEDIUM RISK</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {[["Political",42],["Content",38],["Network",25]].map(([l,v]) => (
-                <div key={l as string} className="bg-white/5 rounded-lg p-2 text-center">
-                  <div className="text-white font-bold text-lg">{v}</div>
-                  <div className="text-slate-400 text-xs">{l}</div>
-                </div>
-              ))}
-            </div>
-            <div className="text-xs text-slate-400"><span className="text-amber-400 font-semibold">2 flagged posts</span> · 34 posts analyzed · 3 platforms</div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-type TrustItem = { icon: React.ElementType; text: string };
-
-function TrustBar() {
-  const items: TrustItem[] = [
-    { icon: Lock,     text: "256-bit Encrypted" },
-    { icon: Shield,   text: "GDPR Compliant" },
-    { icon: Brain,    text: "GPT-4o Powered" },
-    { icon: Globe,    text: "6 Platforms" },
-    { icon: FileText, text: "PDF Report" },
-    { icon: Zap,      text: "Results in Minutes" },
-  ];
-  return (
-    <section className="bg-slate-50 border-y border-slate-200 py-5">
-      <div className="max-w-7xl mx-auto px-4 overflow-hidden">
-        <div className="flex flex-wrap justify-center gap-6 sm:gap-10">
-          {items.map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-2 text-slate-600 text-sm font-medium">
-              <Icon className="w-4 h-4 text-blue-600" />{text}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function HowItWorks() {
-  const steps = [
-    { n:"01", icon:FileText, title:"Submit Your Details", desc:"Fill in your name, country, and paste your social media profile URLs. Supports Twitter, Instagram, TikTok, LinkedIn, Facebook and more." },
-    { n:"02", icon:Brain, title:"AI Analyzes Your Content", desc:"GPT-4o scrapes publicly visible posts and evaluates them against USCIS screening criteria and INA §212 grounds of inadmissibility." },
-    { n:"03", icon:FileText, title:"Get Your PDF Report", desc:"Receive a detailed risk report with flagged posts, risk scores, network analysis and actionable recommendations to improve your chances." },
-  ];
-  return (
-    <section id="how-it-works" className="py-20 lg:py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <InView>
-          <motion.div variants={fadeUp} className="text-center mb-14">
-            <div className="text-blue-600 font-semibold text-sm uppercase tracking-widest mb-3">Simple Process</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">How It Works</h2>
-            <p className="text-slate-500 max-w-xl mx-auto">From submission to report in under 3 minutes. No account required.</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {steps.map((s) => (
-              <motion.div key={s.n} variants={fadeUp} className="relative bg-white border border-slate-200 rounded-2xl p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-5"><s.icon className="w-6 h-6 text-white" /></div>
-                <div className="absolute top-6 right-6 text-5xl font-extrabold text-slate-100 select-none">{s.n}</div>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">{s.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </InView>
-      </div>
-    </section>
-  );
-}
-
-function Features() {
-  const features = [
-    { icon:Brain, title:"AI Tools with Lawyer Review", desc:"AI-powered screening combined with immigration lawyer review for a complete, expert-backed assessment." },
-    { icon:AlertTriangle, title:"INA §212 Risk Screening", desc:"Checks against all grounds of inadmissibility including security, extremism, and criminal activity." },
-    { icon:FileText, title:"Professional PDF Report", desc:"Branded PDF with risk scores, flagged posts, network analysis and recommendations." },
-    { icon:Globe, title:"Multi-Platform Coverage", desc:"Twitter/X, Instagram, TikTok, LinkedIn, Facebook, YouTube — up to 10 accounts." },
-    { icon:TrendingUp, title:"Risk Score Breakdown", desc:"Separate Political, Content, and Network risk scores with a composite overall rating." },
-    { icon:Lock, title:"Privacy First", desc:"No passwords needed. Analysis is based on publicly visible content only." },
-    { icon:Zap, title:"Fast Results", desc:"Most reports ready in under 3 minutes, before your interview not after." },
-    { icon:Users, title:"Network Analysis", desc:"Analyze the risk profile of your public social connections and interactions." },
-    { icon:Shield, title:"Actionable Recommendations", desc:"Specific advice on which posts to remove or privatize before your visa interview." },
-  ];
-  return (
-    <section id="features" className="py-20 lg:py-28 bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <InView>
-          <motion.div variants={fadeUp} className="text-center mb-14">
-            <div className="text-blue-600 font-semibold text-sm uppercase tracking-widest mb-3">Why VisaScreenAI</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">Everything You Need to Screen With Confidence</h2>
-          </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f) => (
-              <motion.div key={f.title} variants={fadeUp} className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-                <div className="w-10 h-10 bg-blue-50 group-hover:bg-blue-600 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300">
-                  <f.icon className="w-5 h-5 text-blue-600 group-hover:text-white transition-colors duration-300" />
-                </div>
-                <h3 className="font-bold text-slate-900 mb-2">{f.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </InView>
-      </div>
-    </section>
-  );
-}
-
-function PricingPreview() {
-  const plans = [
-    { name:"Essential", price:"$29", oldPrice:null, period:"/account", highlight:false, cta:"Get Started — $29", href:"/screen", saving:null,
-      features:["1 social media account","Advanced AI analysis","Essential risk report","Risk scoring","2–3 day delivery"] },
-    { name:"3-Account Bundle", price:"$75", oldPrice:"$87", period:"", highlight:true, cta:"Choose AI Scan", href:"/pricing", saving:"Save $12 with the bundle",
-      features:["Up to 3 social media accounts","Advanced AI analysis","Comprehensive PDF report","Post links & screenshots","2–3 day delivery"] },
-    { name:"Human Review", price:"$200", oldPrice:"$250", period:"", highlight:false, cta:"Express Interest – Save $50", href:"/pricing", saving:"20% OFF – Limited Time",
-      features:["Unlimited accounts","Full AI scan included","Expert human review","Immigration specialist insights","Priority support"] },
-  ];
-  return (
-    <section className="py-20 lg:py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <InView>
-          <motion.div variants={fadeUp} className="text-center mb-14">
-            <div className="text-blue-600 font-semibold text-sm uppercase tracking-widest mb-3">Pricing</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-slate-500 max-w-xl mx-auto">No subscription. Pay per report. Your privacy is not a product.</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {plans.map((plan) => (
-              <motion.div key={plan.name} variants={fadeUp}
-                className={`relative rounded-2xl p-8 border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${plan.highlight ? "bg-white border-amber-400 shadow-xl shadow-amber-400/20" : "bg-white border-slate-200 hover:border-blue-300"}`}
-              >
-                {plan.highlight && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-amber-400 text-slate-900 text-xs font-bold px-5 py-1.5 rounded-full tracking-wide">MOST POPULAR</span>
-                  </div>
-                )}
-                <div className="text-slate-900">
-                  <div className="font-bold text-sm mb-2 uppercase tracking-wide text-slate-400">{plan.name}</div>
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    {plan.oldPrice && <span className="text-xl font-bold text-slate-400 line-through">{plan.oldPrice}</span>}
-                    <span className={`text-4xl font-extrabold ${plan.highlight ? "text-amber-500" : "text-slate-900"}`}>{plan.price}</span>
-                    {plan.period && <span className="text-base font-normal text-slate-400">{plan.period}</span>}
-                  </div>
-                  {plan.saving && <div className={`text-sm font-semibold mb-3 ${plan.highlight ? "text-amber-600" : "text-blue-600"}`}>{plan.saving}</div>}
-                  <ul className="mt-4 space-y-3 mb-8">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-sm">
-                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${plan.highlight ? "text-amber-500" : "text-green-500"}`} />
-                        <span className="text-slate-700">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={plan.href} className={`block text-center font-bold py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 ${plan.highlight ? "bg-amber-400 hover:bg-amber-300 text-slate-900 shadow-lg" : "bg-slate-900 hover:bg-slate-700 text-white"}`}>
-                    {plan.cta}
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </InView>
-      </div>
-    </section>
-  );
-}
-
-const faqs = [
-  { q:"Do US visa authorities actually check social media?", a:"Yes. USCIS and consular officers have been screening social media since 2019. They check Twitter/X, Facebook, Instagram, YouTube, LinkedIn and more." },
-  { q:"What content can get my visa denied?", a:"Content flagged under INA §212 includes: terrorism-related speech, threats of violence, support for illegal immigration facilitation, certain political extremism, and connections to criminal networks." },
-  { q:"Do you store my social media passwords?", a:"Never. We only analyze publicly visible content from profile URLs you provide. We do not require, request, or store any credentials." },
-  { q:"How accurate is the AI analysis?", a:"Our GPT-4o model is calibrated to match the judgment of immigration compliance experts. It is not a substitute for legal advice, but it gives you a reliable pre-screening baseline." },
-  { q:"How long does it take to get my report?", a:"Most reports are ready in under 3 minutes. Larger submissions with 10 accounts may take up to 8 minutes." },
-  { q:"What should I do if I have HIGH risk posts?", a:"Your report includes specific recommendations. Generally: set the post to private, delete it, or be prepared to address it with a consular officer. Consult an immigration attorney for serious flags." },
-];
-
-function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-  return (
-    <section id="faq" className="py-20 lg:py-28 bg-slate-50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <InView>
-          <motion.div variants={fadeUp} className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">Frequently Asked Questions</h2>
-          </motion.div>
-          <div className="space-y-3">
-            {faqs.map((faq, i) => (
-              <motion.div key={i} variants={fadeUp} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between px-6 py-5 text-left font-semibold text-slate-900 hover:bg-slate-50 transition-colors">
-                  {faq.q}
-                  <ChevronDown className={`w-5 h-5 text-slate-400 flex-shrink-0 ml-4 transition-transform duration-300 ${open === i ? "rotate-180" : ""}`} />
-                </button>
-                {open === i && <div className="px-6 pb-5 text-slate-600 text-sm leading-relaxed">{faq.a}</div>}
-              </motion.div>
-            ))}
-          </div>
-        </InView>
-      </div>
-    </section>
-  );
-}
-
-function CTABanner() {
-  return (
-    <section className="hero-gradient py-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <InView>
-          <motion.div variants={fadeUp}>
-            <div className="flex justify-center mb-4">{[...Array(5)].map((_,i) => <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />)}</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Don&apos;t Let a Tweet Cost You Your Visa</h2>
-            <p className="text-slate-300 text-lg mb-8 max-w-xl mx-auto">Join thousands of applicants who screened their profiles before their US visa interview. Your professional screening report is ready in under 3 minutes.</p>
-            <Link href="/screen" className="inline-flex items-center gap-2 bg-white text-[#0A1628] font-bold px-8 py-4 rounded-xl text-lg hover:bg-blue-50 transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl">
-              Get My Screening Report <ArrowRight className="w-5 h-5" />
-            </Link>
-          </motion.div>
-        </InView>
-      </div>
-    </section>
-  );
-}
+import s from "./home.module.css";
 
 export default function HomePage() {
   return (
-    <>
-      <Hero />
-      <TrustBar />
-      <HowItWorks />
-      <Features />
-      <PricingPreview />
-      <FAQ />
-      <CTABanner />
-    </>
+    <div className={s.wrapper}>
+
+      {/* HERO */}
+      <div className={s.hero}>
+        <div>
+          <div className={s.eyebrow}>AI screening · INA §212-grounded · Trusted in 50+ countries</div>
+          <h1 className={s.heroH1}>
+            Find what USCIS<br />
+            will find. <span className={s.accent}>Before<br />they find it.</span>
+          </h1>
+          <p className={s.lede}>
+            Consular officers and USCIS adjudicators screen your social media as part of every visa
+            decision. We scan it the same way they do — flag the posts that could deny your visa,
+            and tell you exactly what to do about each one.
+          </p>
+          <div className={s.heroCtas}>
+            <Link href="/screen" className={`${s.btn} ${s.btnPrimary}`}>
+              Start with a free scan<span className={s.arrow}>→</span>
+            </Link>
+            <Link href="#pricing" className={`${s.btn} ${s.btnGhost}`}>
+              See pricing
+            </Link>
+          </div>
+          <div className={s.trustRow}>
+            <div className={s.trustItem}>
+              <span className={s.trustLabel}>Lookback</span>
+              <span className={s.trustValue}>5 years</span>
+            </div>
+            <div className={s.trustItem}>
+              <span className={s.trustLabel}>Turnaround</span>
+              <span className={s.trustValue}>Under 3 min</span>
+            </div>
+            <div className={s.trustItem}>
+              <span className={s.trustLabel}>Privacy</span>
+              <span className={s.trustValue}>No passwords</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={s.heroRight}>
+          <div className={s.reportCard}>
+            <div className={s.reportHeader}>
+              <div>
+                <div className={s.reportTitle}>Risk Screening Report</div>
+                <div className={s.reportSubtitle}>Applicant 03B · India → USA · F-1 Student Visa</div>
+              </div>
+              <div className={s.reportStamp}>Reviewed</div>
+            </div>
+            <div className={s.riskMeter}>
+              <div className={`${s.riskCell} ${s.amber}`}>
+                <div className={s.riskCellLabel}>Political</div>
+                <div className={s.riskScore}>42</div>
+              </div>
+              <div className={`${s.riskCell} ${s.red}`}>
+                <div className={s.riskCellLabel}>Content</div>
+                <div className={s.riskScore}>68</div>
+              </div>
+              <div className={`${s.riskCell} ${s.green}`}>
+                <div className={s.riskCellLabel}>Network</div>
+                <div className={s.riskScore}>21</div>
+              </div>
+            </div>
+            <div className={s.flagRow}>
+              <span className={`${s.flagDot} ${s.dotRed}`} />
+              <div className={s.flagText}>
+                <span className={s.flagPost}>&ldquo;Can&apos;t wait to work under the table when I land lol&rdquo;</span>
+                <span className={`${s.flagAction} ${s.actionDelete}`}>Action: Delete · Conflicts with F-1 status</span>
+              </div>
+            </div>
+            <div className={s.flagRow}>
+              <span className={`${s.flagDot} ${s.dotAmber}`} />
+              <div className={s.flagText}>
+                <span className={s.flagPost}>Tagged photo at protest, 2022</span>
+                <span className={`${s.flagAction} ${s.actionArchive}`}>Action: Archive · Prep talking point</span>
+              </div>
+            </div>
+            <div className={s.flagRow}>
+              <span className={`${s.flagDot} ${s.dotAmber}`} />
+              <div className={s.flagText}>
+                <span className={s.flagPost}>LinkedIn says &ldquo;Software Engineer,&rdquo; IG says &ldquo;DJ&rdquo;</span>
+                <span className={`${s.flagAction} ${s.actionArchive}`}>Action: Reconcile before interview</span>
+              </div>
+            </div>
+          </div>
+          <div className={s.annotation}>Address items 1 &amp; 3 before DS-160 submission.</div>
+        </div>
+      </div>
+
+      {/* STAT STRIP */}
+      <div className={s.statStrip}>
+        <div className={s.statStripInner}>
+          <div className={s.stat}>
+            <div className={s.statNum}>10K+</div>
+            <div className={s.statText}><strong>Profiles screened</strong>Across every major platform</div>
+          </div>
+          <div className={s.stat}>
+            <div className={s.statNum}>50+</div>
+            <div className={s.statText}><strong>Countries served</strong>Applicants from every region</div>
+          </div>
+          <div className={s.stat}>
+            <div className={s.statNum}>§212</div>
+            <div className={s.statText}><strong>INA-grounded</strong>DS-160 &amp; inadmissibility analysis</div>
+          </div>
+          <div className={s.stat}>
+            <div className={s.statNum}>&lt;3m</div>
+            <div className={s.statText}><strong>To first report</strong>Free scan delivered fast</div>
+          </div>
+        </div>
+      </div>
+
+      {/* HOW IT WORKS */}
+      <section id="how" className={s.howSection}>
+        <div className={s.sectionInner}>
+          <div className={s.sectionLabel}>— How it works</div>
+          <h2 className={s.sectionTitle}>Three steps. <em>One clear plan.</em></h2>
+          <div className={s.steps}>
+            <div className={s.step}>
+              <div className={s.stepNum}>i.</div>
+              <h3 className={s.stepH3}>Submit your handles</h3>
+              <p className={s.stepP}>Paste your public social URLs — Instagram, X, TikTok, LinkedIn, Facebook, YouTube. We never ask for passwords. Same scope a consular officer can see.</p>
+              <span className={s.stepTag}>No login required</span>
+            </div>
+            <div className={s.step}>
+              <div className={s.stepNum}>ii.</div>
+              <h3 className={s.stepH3}>AI scan, attorney-grade rules</h3>
+              <p className={s.stepP}>Our system analyzes up to 5 years of content against the actual grounds of inadmissibility under INA §212 and DS-160 disclosure questions.</p>
+              <span className={s.stepTag}>INA §212 rule set</span>
+            </div>
+            <div className={s.step}>
+              <div className={s.stepNum}>iii.</div>
+              <h3 className={s.stepH3}>Get a plan, not just flags</h3>
+              <p className={s.stepP}>PDF report with every flagged post, why it&apos;s flagged, and a specific action — delete, archive, leave, or be ready to explain at your interview.</p>
+              <span className={s.stepTag}>Delivered in 24–48hrs</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* WHY */}
+      <section id="why" className={s.whySection}>
+        <div className={s.sectionInner}>
+          <div className={s.sectionLabel}>— Why VisaFootprint</div>
+          <h2 className={s.sectionTitle}>Other tools spot keywords.<br /><em>We spot legal risk.</em></h2>
+          <div className={s.whyGrid}>
+            <div className={s.whyCard}>
+              <div className={s.whyEyebrow}>01 — Built on real cases</div>
+              <h3>Trained on what actually <em>triggers RFEs and refusals.</em></h3>
+              <p>Our risk model isn&apos;t a generic LLM guess. It&apos;s tuned on the patterns that show up in real-world 214(b) refusals, 221(g) administrative processing, and RFEs — categorized against INA §212 grounds.</p>
+            </div>
+            <div className={`${s.whyCard} ${s.dark}`}>
+              <div className={s.whyEyebrow}>02 — Action, not anxiety</div>
+              <h3>We tell you <em>what to do</em>, not just what&apos;s wrong.</h3>
+              <p>Every flagged post comes with a specific action. Delete it. Archive it. Add it to your interview prep document. No vague &ldquo;this might be risky&rdquo; — actual decisions you can execute today.</p>
+            </div>
+            <div className={`${s.whyCard} ${s.dark}`}>
+              <div className={s.whyEyebrow}>03 — Human review available</div>
+              <h3>Pro reports include <em>licensed-attorney review.</em></h3>
+              <p>For prior denials, RFEs, O-1 cases, EB filings, or any high-stakes interview, a U.S. immigration attorney personally reviews your flagged content and provides a written memo plus a 30-minute consultation.</p>
+            </div>
+            <div className={s.whyCard}>
+              <div className={s.whyEyebrow}>04 — Your privacy</div>
+              <h3>No passwords. <em>No selling data.</em> Ever.</h3>
+              <p>We only analyze publicly visible content — the same scope an officer can see. We don&apos;t ask for logins, don&apos;t store posts after your report is delivered, and never sell your data to third parties.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section id="pricing" className={s.pricingSection}>
+        <div className={s.sectionInner}>
+          <div className={s.sectionLabel}>— Pricing</div>
+          <h2 className={s.sectionTitle}>Start free. <em>Upgrade when it counts.</em></h2>
+          <p className={s.priceIntro}>One-time scans. No subscriptions unless you choose Monitor. Three tiers built around what your case actually needs — not artificial feature gates.</p>
+          <div className={s.tiers}>
+            <div className={s.tier}>
+              <div className={s.tierName}>Free Scan</div>
+              <div className={s.tierTag}>Try the tool · 1 account</div>
+              <div className={s.tierPrice}>
+                <span className={s.tierCurrency}>$</span>
+                <span className={s.tierNum}>0</span>
+                <span className={s.tierUnit}>/ one-time</span>
+              </div>
+              <p className={s.tierPitch}>Quick risk check before you file. No credit card. See the format and decide if you need more.</p>
+              <ul className={s.tierList}>
+                <li>1 social account</li>
+                <li>Last 12 months of public posts</li>
+                <li>AI risk summary, 3 categories</li>
+                <li>Email-delivered summary</li>
+                <li>Sample of flagged posts</li>
+              </ul>
+              <Link href="/screen" className={s.tierCta}>Get my free scan</Link>
+            </div>
+
+            <div className={`${s.tier} ${s.featured}`}>
+              <div className={s.tierBadge}>Most popular</div>
+              <div className={s.tierName}>Standard Scan</div>
+              <div className={s.tierTag}>Most visa applicants · 3 accounts</div>
+              <div className={s.tierPrice}>
+                <span className={s.tierCurrency}>$</span>
+                <span className={s.tierNum}>49</span>
+                <span className={s.tierUnit}>/ one-time</span>
+              </div>
+              <p className={s.tierPitch}>Full screening across your real digital footprint. Built for B1/B2, F-1, H-1B, AOS, and family-based applicants.</p>
+              <ul className={s.tierList}>
+                <li>Up to 3 accounts</li>
+                <li>5-year lookback (DS-160 match)</li>
+                <li>Cross-platform consistency check</li>
+                <li>Full PDF report with risk scores</li>
+                <li>Post-by-post action plan</li>
+                <li>Priority processing · 48hr turnaround</li>
+              </ul>
+              <Link href="/screen" className={s.tierCta}>Run Standard Scan — $49</Link>
+            </div>
+
+            <div className={s.tier}>
+              <div className={s.tierName}>Attorney-Reviewed</div>
+              <div className={s.tierTag}>High-stakes cases · 10 accounts</div>
+              <div className={s.tierPrice}>
+                <span className={s.tierCurrency}>$</span>
+                <span className={s.tierNum}>199</span>
+                <span className={s.tierUnit}>/ one-time</span>
+              </div>
+              <p className={s.tierPitch}>For prior denials, RFEs, O-1, EB cases, or anyone with prior immigration history. Reviewed by a licensed U.S. immigration attorney.</p>
+              <ul className={s.tierList}>
+                <li>Up to 10 accounts + Google &amp; web mentions</li>
+                <li>10-year lookback</li>
+                <li className={s.highlight}>Written memo by U.S. immigration attorney</li>
+                <li className={s.highlight}>30-min attorney consultation included</li>
+                <li>Mock interview prep tied to your footprint</li>
+                <li>Free re-scan within 60 days</li>
+                <li>5-business-day turnaround · Rush available</li>
+              </ul>
+              <Link href="/screen" className={s.tierCta}>Get Attorney Review — $199</Link>
+            </div>
+          </div>
+
+          <div className={s.monitorStrip}>
+            <div>
+              <strong className={s.msLabel}>+ Add VisaFootprint Monitor</strong>
+              <span className={s.msDesc}>Visa cases take 6–18 months. We watch your accounts the whole time and alert you to new risks. Cancel anytime.</span>
+            </div>
+            <div className={s.msCta}>
+              <div className={s.msPrice}>$19<small>/mo</small></div>
+              <Link href="/screen" className={s.monitorCta}>Add monitoring</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* QUOTE */}
+      <section className={s.quoteSection}>
+        <blockquote>A bad post can cost a visa as easily as a missing document. The difference is, you can fix the post.</blockquote>
+        <div className={s.quoteAttr}>— The VisaFootprint principle</div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className={s.faqSection}>
+        <div className={s.sectionInner}>
+          <div className={s.sectionLabel}>— Questions</div>
+          <h2 className={s.sectionTitle}>Things people ask <em>before they file.</em></h2>
+          <div className={s.faqList}>
+            <details className={s.faqItem}>
+              <summary>Do U.S. visa authorities actually check social media?</summary>
+              <p>Yes. Since 2019, DS-160 and DS-260 forms require disclosure of social media identifiers. Consular officers and USCIS adjudicators routinely review public profiles as part of security and credibility screening. Posts that contradict your application can trigger 214(b) refusals, 221(g) administrative processing, or RFEs.</p>
+            </details>
+            <details className={s.faqItem}>
+              <summary>Is this legal advice?</summary>
+              <p>The Free and Standard reports are AI-generated risk analysis and are not legal advice. The Attorney-Reviewed tier includes a written memo and consultation with a licensed U.S. immigration attorney — that engagement <em>is</em> legal advice within its defined scope.</p>
+            </details>
+            <details className={s.faqItem}>
+              <summary>Why use this if I already have a lawyer?</summary>
+              <p>Most immigration lawyers don&apos;t have time to go post-by-post through 5+ years of your content. We do that work and hand the results to you (or your lawyer) in a format that&apos;s easy to act on. We also offer white-label and bulk plans for firms.</p>
+            </details>
+            <details className={s.faqItem}>
+              <summary>Do you store my passwords or private content?</summary>
+              <p>Never. We only analyze publicly visible content — the same scope an officer can see at your interview. No logins, no DMs, no private posts. Source data is purged after your report is delivered.</p>
+            </details>
+            <details className={s.faqItem}>
+              <summary>I already filed. Is it too late?</summary>
+              <p>No. Run a scan now. If we find issues, you can clean them up before your interview or before USCIS issues an RFE. Many problems are recoverable if you catch them early.</p>
+            </details>
+            <details className={s.faqItem}>
+              <summary>I had a prior visa denial. Can you help?</summary>
+              <p>Yes. Choose Attorney-Reviewed. A licensed immigration attorney will flag issues that connect to your prior denial and help you build a clean explanation framework for your next interview.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <div className={s.finalCta}>
+        <svg className={s.finalCtaMark} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21c-1.5 0-2.5-1-2.5-2.5 0-1.2.6-2.3 1.4-3.5.9-1.4 1.6-2.5 1.6-4.5 0-3.5 1.5-6 4-6 2 0 3.5 1.8 3.5 4.5 0 2.5-1 4-2 5.5-1 1.5-2 2.8-2 4.5 0 1.3-1 2-2 2H9z" fill="#B8924A"/>
+          <circle cx="6" cy="6" r="1.4" fill="#B8924A"/>
+          <circle cx="9" cy="3.5" r="1.2" fill="#B8924A"/>
+          <circle cx="13" cy="2.8" r="1.1" fill="#B8924A"/>
+          <circle cx="17" cy="3.8" r="1" fill="#B8924A"/>
+        </svg>
+        <h2>Your application is one post away from a problem.<br /><em>Find it before they do.</em></h2>
+        <p>Free scan in under 3 minutes. No credit card. No account.</p>
+        <Link href="/screen" className={s.finalCtaBtn}>Run my free scan →</Link>
+      </div>
+
+    </div>
   );
 }
