@@ -3,13 +3,14 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
 import httpx
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,46 @@ router = APIRouter()
 
 REPORTS_DIR       = os.getenv("REPORTS_DIR", ".tmp/reports")
 SHEETS_WEBHOOK    = os.getenv("GOOGLE_SHEETS_WEBHOOK_URL", "")
+
+# ── Tier account limits ───────────────────────────────────────────────────────
+TIER_ACCOUNT_LIMITS = {"free": 1, "standard": 3, "attorney": 10}
+
+# ── IP rate limiting (in-memory; survives restarts poorly but sufficient for MVP)
+_ip_log: dict[str, list[datetime]] = defaultdict(list)
+IP_MAX_PER_DAY = 3
+IP_WINDOW      = timedelta(hours=24)
+
+# ── Disposable / temp-mail domain blocklist ───────────────────────────────────
+DISPOSABLE_DOMAINS = {
+    "mailinator.com","guerrillamail.com","guerrillamail.info","guerrillamail.biz",
+    "guerrillamail.de","guerrillamail.net","guerrillamail.org","guerrillamailblock.com",
+    "grr.la","sharklasers.com","spam4.me","10minutemail.com","10minutemail.net",
+    "tempmail.com","temp-mail.org","tempr.email","throwaway.email","throwam.com",
+    "yopmail.com","yopmail.fr","cool.fr.nf","jetable.fr.nf","nospam.ze.tc",
+    "nomail.xl.cx","mega.zik.dj","speed.1s.fr","courriel.fr.nf","moncourrier.fr.nf",
+    "monemail.fr.nf","monmail.fr.nf","trashmail.at","trashmail.io","trashmail.me",
+    "trashmail.net","trashmail.com","dispostable.com","discardmail.com","discard.email",
+    "mailnull.com","maildrop.cc","mailnesia.com","fakeinbox.com","spamgourmet.com",
+    "spamgourmet.net","spamgourmet.org","spamfree24.org","spamspot.com",
+    "emailondeck.com","filzmail.com","bugmenot.com","mailmetrash.com","junk1.com",
+    "getairmail.com","getonemail.com","inoutmail.de","inoutmail.eu","inoutmail.info",
+    "inoutmail.net","mohmal.com","trbvm.com","mvrht.com","spamevader.com",
+}
+
+def _get_client_ip(request: Request) -> str:
+    fwd = request.headers.get("X-Forwarded-For")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def _ip_allowed(ip: str) -> bool:
+    now = datetime.utcnow()
+    cutoff = now - IP_WINDOW
+    _ip_log[ip] = [t for t in _ip_log[ip] if t > cutoff]
+    return len(_ip_log[ip]) < IP_MAX_PER_DAY
+
+def _record_ip(ip: str):
+    _ip_log[ip].append(datetime.utcnow())
 PROJECT_ROOT      = str(Path(__file__).resolve().parents[2])
 MAX_ACCOUNTS      = 10
 MAX_SUBMISSIONS_PER_EMAIL = 3
@@ -126,6 +167,14 @@ class ScreeningRequest(BaseModel):
     reason: str
     timeline: str
     consent: bool
+    tier: str = "free"
+
+    @field_validator("tier")
+    @classmethod
+    def validate_tier(cls, v):
+        if v not in TIER_ACCOUNT_LIMITS:
+            return "free"
+        return v
 
     @field_validator("accounts")
     @classmethod
@@ -301,10 +350,37 @@ async def _log_lead_to_sheets(payload: dict):
 @router.post("/screen")
 async def submit_screening(
     req: ScreeningRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    # Rate limit: 3 per email
+    client_ip = _get_client_ip(request)
+
+    # Block disposable / temp-mail addresses
+    email_domain = req.email.lower().split("@")[-1] if "@" in req.email else ""
+    if email_domain in DISPOSABLE_DOMAINS:
+        raise HTTPException(
+            status_code=400,
+            detail="Disposable or temporary email addresses are not allowed. Please use a real email.",
+        )
+
+    # IP rate limit: max 3 submissions per IP per 24 hours
+    if not _ip_allowed(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many submissions from your network. Please try again in 24 hours.",
+        )
+
+    # Tier account limit enforcement
+    tier_limit = TIER_ACCOUNT_LIMITS.get(req.tier, 1)
+    valid_accounts = [a for a in req.accounts if a.handle.strip()]
+    if len(valid_accounts) > tier_limit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Your plan allows up to {tier_limit} account(s). Upgrade to add more.",
+        )
+
+    # Rate limit: max submissions per email
     count_result = await db.execute(
         select(func.count()).where(Submission.email == req.email)
     )
@@ -340,6 +416,7 @@ async def submit_screening(
         "accounts": [a.model_dump() for a in req.accounts],
     }
 
+    _record_ip(client_ip)
     background_tasks.add_task(run_screening_job, report.id, submission_data)
 
     # Log lead to Google Sheets (fire-and-forget, never blocks response)

@@ -31,6 +31,9 @@ const COUNTRIES = [
 
 const PLATFORMS = ["Twitter/X","Instagram","TikTok","LinkedIn","Facebook","YouTube"];
 const AUTO_SCRAPE_PLATFORMS = new Set(["Twitter/X","Instagram","TikTok","LinkedIn","Facebook","YouTube"]);
+
+// Account limits per tier — free plan = 1, standard = 3, attorney = 10
+const FREE_ACCOUNT_LIMIT = 1;
 const REASONS = [
   "To improve my chances of getting a VISA",
   "To detect any objectionable content I may have overlooked",
@@ -105,7 +108,7 @@ export default function ScreenPage() {
   );
 
   const addAccount = () => {
-    if (accounts.length < 10) setAccounts([...accounts, { platform: "Twitter/X", handle: "" }]);
+    if (accounts.length < FREE_ACCOUNT_LIMIT) setAccounts([...accounts, { platform: "Twitter/X", handle: "" }]);
   };
   const removeAccount = (i: number) => {
     setAccounts(accounts.filter((_, idx) => idx !== i));
@@ -375,10 +378,19 @@ export default function ScreenPage() {
                       </div>
                     ))}
                   </div>
-                  {accounts.length < 10 && (
+                  {accounts.length < FREE_ACCOUNT_LIMIT ? (
                     <button onClick={addAccount} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--ink)", background: "none", border: "1px dashed rgba(14,23,38,0.25)", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "Inter Tight, system-ui, sans-serif", width: "fit-content" }}>
-                      <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/10)
+                      <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/{FREE_ACCOUNT_LIMIT})
                     </button>
+                  ) : (
+                    <div style={{ border: "1px solid rgba(184,146,74,0.35)", borderRadius: 10, padding: "12px 16px", background: "rgba(184,146,74,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+                        <strong style={{ color: "var(--ink)" }}>Free plan:</strong> 1 account included.
+                      </span>
+                      <a href="/#pricing" style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+                        Upgrade → 3 accounts
+                      </a>
+                    </div>
                   )}
                   <div style={{ background: "rgba(14,23,38,0.04)", border: "1px solid rgba(14,23,38,0.1)", borderRadius: 10, padding: "14px 16px", fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.6 }}>
                     <strong style={{ color: "var(--ink)" }}>Privacy Notice:</strong> We only analyze publicly visible posts. We do not require passwords or store credentials. Your data is encrypted and used solely for screening. Each email allows up to 3 submissions.

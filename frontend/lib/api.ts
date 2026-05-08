@@ -54,6 +54,16 @@ export interface ReportData {
   platforms_analyzed: string[];
 }
 
+function parseDetail(detail: unknown): string {
+  if (!detail) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    // FastAPI validation error: [{loc, msg, type}]
+    return detail.map((e) => (typeof e === "object" && e !== null && "msg" in e ? String((e as Record<string, unknown>).msg) : JSON.stringify(e))).join(". ");
+  }
+  return JSON.stringify(detail);
+}
+
 export async function submitScreening(data: ScreeningRequest): Promise<ScreeningResponse> {
   const res = await fetch(`${BASE}/api/screen`, {
     method: "POST",
@@ -62,7 +72,8 @@ export async function submitScreening(data: ScreeningRequest): Promise<Screening
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Request failed: ${res.status}`);
+    const msg = parseDetail(err.detail) || `Request failed: ${res.status}`;
+    throw new Error(msg);
   }
   return res.json();
 }
