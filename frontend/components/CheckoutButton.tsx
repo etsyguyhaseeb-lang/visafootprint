@@ -8,9 +8,10 @@ interface Props {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  block?: boolean;
 }
 
-export default function CheckoutButton({ tier, children, className, style }: Props) {
+export default function CheckoutButton({ tier, children, className, style, block }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,7 +34,7 @@ export default function CheckoutButton({ tier, children, className, style }: Pro
       } else {
         setError("No checkout URL returned. Check payment configuration.");
       }
-    } catch (e) {
+    } catch {
       setError("Could not reach payment service. Check your connection.");
     } finally {
       setLoading(false);
@@ -41,20 +42,20 @@ export default function CheckoutButton({ tier, children, className, style }: Pro
   };
 
   return (
-    <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+    <div style={{ display: block ? "block" : "inline-flex", flexDirection: "column", alignItems: block ? "stretch" : "center", gap: 6, width: block ? "100%" : undefined }}>
       <button
         onClick={handleClick}
         disabled={loading}
         className={className}
-        style={{ cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, ...style }}
+        style={{ cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, width: block ? "100%" : undefined, ...style }}
       >
         {loading ? "Redirecting to payment…" : children}
       </button>
       {error && (
-        <span style={{ fontSize: 12, color: "#c0392b", maxWidth: 320, textAlign: "center", lineHeight: 1.4 }}>
+        <span style={{ fontSize: 12, color: "#c0392b", textAlign: "center", lineHeight: 1.4, padding: "4px 0" }}>
           {error}
         </span>
       )}
-    </span>
+    </div>
   );
 }

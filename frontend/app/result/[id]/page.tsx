@@ -281,7 +281,8 @@ export default function ReportPage() {
 
             <CheckoutButton
               tier="monitor"
-              style={{ display: "block", textAlign: "center", width: "100%", padding: "16px 24px", background: "var(--gold)", color: "var(--ink)", fontWeight: 700, fontSize: 15, border: "none", letterSpacing: "0.02em", borderRadius: 0 }}
+              block
+              style={{ textAlign: "center", padding: "16px 24px", background: "var(--gold)", color: "var(--ink)", fontWeight: 700, fontSize: 15, border: "none", letterSpacing: "0.02em", borderRadius: 0 }}
             >
               Add Monitor — $19/month →
             </CheckoutButton>
