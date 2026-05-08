@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Shield, Plus, Trash2, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 import { submitScreening, getStatus, type AccountInput } from "@/lib/api";
 
 const COUNTRIES = [
@@ -30,7 +30,6 @@ const COUNTRIES = [
 ];
 
 const PLATFORMS = ["Twitter/X","Instagram","TikTok","LinkedIn","Facebook","YouTube"];
-// All platforms are auto-scraped via Apify
 const AUTO_SCRAPE_PLATFORMS = new Set(["Twitter/X","Instagram","TikTok","LinkedIn","Facebook","YouTube"]);
 const REASONS = [
   "To improve my chances of getting a VISA",
@@ -50,6 +49,25 @@ const slideVariants = {
   center: { x: 0, opacity: 1, transition: { duration: 0.35 } },
   exit: (dir: number) => ({ x: dir > 0 ? -60 : 60, opacity: 0, transition: { duration: 0.25 } }),
 };
+
+const inputCls = `
+  w-full border border-[rgba(14,23,38,0.2)] rounded-lg px-4 py-3 text-sm
+  bg-[var(--paper)] text-[var(--ink)] placeholder-[rgba(14,23,38,0.4)]
+  focus:outline-none focus:border-[var(--ink)] focus:ring-1 focus:ring-[var(--ink)]
+  transition-all font-[Inter_Tight,system-ui,sans-serif]
+`.trim();
+
+const VisaFootprintMark = () => (
+  <div style={{
+    width: 48, height: 48, background: "var(--ink)", borderRadius: 12,
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  }}>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="var(--paper)" opacity="0.9"/>
+      <path d="M9 12l2 2 4-4" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </div>
+);
 
 export default function ScreenPage() {
   const router = useRouter();
@@ -77,21 +95,13 @@ export default function ScreenPage() {
   };
   const removeAccount = (i: number) => {
     setAccounts(accounts.filter((_, idx) => idx !== i));
-    setExpandedPaste((prev) => {
-      const next = new Set(prev);
-      next.delete(i);
-      return next;
-    });
+    setExpandedPaste((prev) => { const n = new Set(prev); n.delete(i); return n; });
   };
   const updateAccount = (i: number, field: "platform" | "handle" | "manual_posts", val: string) => {
     setAccounts(accounts.map((a, idx) => idx === i ? { ...a, [field]: val } : a));
   };
   const togglePaste = (i: number) => {
-    setExpandedPaste((prev) => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
+    setExpandedPaste((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
   };
 
   const goNext = () => { setDir(1); setError(""); setStep((s) => s + 1); };
@@ -104,8 +114,7 @@ export default function ScreenPage() {
       if (!country) { setError("Please select your country of origin."); return false; }
     }
     if (step === 1) {
-      const valid = accounts.filter((a) => a.handle.trim());
-      if (!valid.length) { setError("Add at least one social media account."); return false; }
+      if (!accounts.filter((a) => a.handle.trim()).length) { setError("Add at least one social media account."); return false; }
     }
     if (step === 2) {
       if (!reason) { setError("Please select a reason for screening."); return false; }
@@ -119,7 +128,7 @@ export default function ScreenPage() {
 
   const handleSubmit = async () => {
     if (!validateStep()) return;
-    goNext(); // step 3 = processing
+    goNext();
     const msgs = [
       "Connecting to social media platforms…",
       "Scraping publicly visible posts…",
@@ -128,11 +137,7 @@ export default function ScreenPage() {
       "Finalizing report…",
     ];
     let mi = 0;
-    const interval = setInterval(() => {
-      mi = (mi + 1) % msgs.length;
-      setProcessingMsg(msgs[mi]);
-    }, 4000);
-
+    const interval = setInterval(() => { mi = (mi + 1) % msgs.length; setProcessingMsg(msgs[mi]); }, 4000);
     try {
       const validAccounts = accounts.filter((a) => a.handle.trim()).map((a) => ({
         platform: a.platform.toLowerCase().replace("/", "").replace("twitter", "twitter").replace("x", "twitter"),
@@ -141,19 +146,11 @@ export default function ScreenPage() {
       }));
       const res = await submitScreening({ name, email, country, accounts: validAccounts, reason, timeline, consent });
       const jobId = res.job_id;
-
       const poll = async () => {
         const status = await getStatus(jobId);
-        if (status.status === "done") {
-          clearInterval(interval);
-          router.push(`/report/${jobId}`);
-        } else if (status.status === "failed") {
-          clearInterval(interval);
-          setError(status.error ?? "Screening failed. Please try again.");
-          setStep(2);
-        } else {
-          setTimeout(poll, 3000);
-        }
+        if (status.status === "done") { clearInterval(interval); router.push(`/report/${jobId}`); }
+        else if (status.status === "failed") { clearInterval(interval); setError(status.error ?? "Screening failed. Please try again."); setStep(2); }
+        else { setTimeout(poll, 3000); }
       };
       setTimeout(poll, 3000);
     } catch (e: unknown) {
@@ -163,43 +160,73 @@ export default function ScreenPage() {
     }
   };
 
-  const stepLabels = ["Your Info", "Accounts", "Preferences", "Processing"];
+  const stepLabels = ["Your Info", "Accounts", "Preferences"];
   const totalSteps = 3;
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 pb-16 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div style={{ minHeight: "100vh", background: "var(--paper)", color: "var(--ink)", paddingTop: 80, paddingBottom: 80 }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 24px" }}>
+
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-600/30">
-            <Shield className="w-7 h-7 text-white" />
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+            <VisaFootprintMark />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Social Media Screening</h1>
-          <p className="text-slate-500">Get your AI-powered visa risk report in minutes</p>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, fontWeight: 500, letterSpacing: "0.15em",
+            textTransform: "uppercase", color: "var(--oxblood)",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16,
+          }}>
+            <span style={{ width: 24, height: 1, background: "var(--oxblood)", display: "inline-block" }} />
+            Social Media Screening
+            <span style={{ width: 24, height: 1, background: "var(--oxblood)", display: "inline-block" }} />
+          </div>
+          <h1 style={{
+            fontFamily: "'Fraunces', serif", fontWeight: 400,
+            fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.0,
+            letterSpacing: "-0.03em", margin: "0 0 16px",
+          }}>
+            Know what USCIS<br />
+            <span style={{ fontStyle: "italic", color: "var(--oxblood)" }}>will find — first.</span>
+          </h1>
+          <p style={{ fontSize: 16, color: "var(--ink-soft)", lineHeight: 1.55, margin: 0 }}>
+            Get your AI-powered visa risk report in under 3 minutes.
+          </p>
         </div>
 
-        {/* Progress */}
+        {/* Progress stepper */}
         {step < 3 && (
-          <div className="relative flex items-start justify-between mb-8 px-4">
-            {/* Track line sits at circle centre (16px = half of h-8) */}
-            <div className="absolute top-4 left-12 right-12 h-0.5 bg-slate-200" />
-            <div
-              className="absolute top-4 left-12 h-0.5 bg-blue-600 transition-all duration-500"
-              style={{ width: step === 0 ? "0%" : step === 1 ? "50%" : "100%" }}
-            />
-
-            {stepLabels.slice(0, 3).map((label, i) => (
-              <div key={i} className="relative z-10 flex flex-col items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                  i < step
-                    ? "bg-blue-600 text-white"
-                    : i === step
-                    ? "bg-blue-600 text-white ring-4 ring-blue-100"
-                    : "bg-white border-2 border-slate-200 text-slate-400"
-                }`}>
-                  {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
+          <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 40, padding: "0 16px" }}>
+            {/* track */}
+            <div style={{ position: "absolute", top: 16, left: 48, right: 48, height: 1, background: "rgba(14,23,38,0.15)" }} />
+            <div style={{
+              position: "absolute", top: 16, left: 48, height: 1,
+              background: "var(--ink)",
+              width: step === 0 ? "0%" : step === 1 ? "50%" : "100%",
+              transition: "width 0.5s cubic-bezier(.4,0,.2,1)",
+            }} />
+            {stepLabels.map((label, i) => (
+              <div key={i} style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 700,
+                  background: i <= step ? "var(--ink)" : "var(--paper)",
+                  color: i <= step ? "var(--paper)" : "rgba(14,23,38,0.35)",
+                  border: i <= step ? "none" : "1.5px solid rgba(14,23,38,0.2)",
+                  transition: "all 0.3s",
+                  outline: i === step ? "3px solid rgba(14,23,38,0.12)" : "none",
+                  outlineOffset: 2,
+                }}>
+                  {i < step ? <CheckCircle style={{ width: 14, height: 14 }} /> : i + 1}
                 </div>
-                <span className={`text-xs font-medium ${i <= step ? "text-blue-600" : "text-slate-400"}`}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: i <= step ? "var(--ink)" : "rgba(14,23,38,0.4)",
+                  fontWeight: 500,
+                }}>
                   {label}
                 </span>
               </div>
@@ -208,7 +235,12 @@ export default function ScreenPage() {
         )}
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div style={{
+          background: "var(--paper-soft)",
+          border: "1px solid rgba(14,23,38,0.12)",
+          borderRadius: 16,
+          overflow: "hidden",
+        }}>
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div
               key={step}
@@ -217,135 +249,189 @@ export default function ScreenPage() {
               initial="enter"
               animate="center"
               exit="exit"
-              className="p-8"
+              style={{ padding: "36px 36px 28px" }}
             >
-              {/* Step 0 — Personal info */}
+
+              {/* Step 0 — Personal Info */}
               {step === 0 && (
-                <div className="space-y-5">
-                  <h2 className="text-xl font-bold text-slate-900">Your Information</h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name *</label>
-                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name"
-                      className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+                    <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontSize: 26, letterSpacing: "-0.02em", margin: "0 0 4px" }}>
+                      Your Information
+                    </h2>
+                    <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Tell us about yourself — your report will be emailed here.</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address *</label>
-                    <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="your.email@example.com"
-                      className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+                    <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 8 }}>Full Name *</label>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className={inputCls} />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Country of Origin *</label>
-                    <input value={countrySearch} onChange={(e) => { setCountrySearch(e.target.value); setCountry(""); }} placeholder="Search country…"
-                      className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all mb-1" />
+                    <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 8 }}>Email Address *</label>
+                    <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="your.email@example.com" className={inputCls} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 8 }}>Country of Origin *</label>
+                    <input
+                      value={countrySearch}
+                      onChange={(e) => { setCountrySearch(e.target.value); setCountry(""); }}
+                      placeholder="Search country…"
+                      className={inputCls}
+                      style={{ marginBottom: 4 }}
+                    />
                     {countrySearch && !country && (
-                      <div className="border border-slate-200 rounded-xl max-h-48 overflow-y-auto shadow-lg bg-white z-10">
+                      <div style={{ border: "1px solid rgba(14,23,38,0.15)", borderRadius: 10, maxHeight: 200, overflowY: "auto", background: "var(--paper)", boxShadow: "0 8px 24px rgba(14,23,38,0.1)" }}>
                         {filteredCountries.slice(0, 20).map((c) => (
                           <button key={c} onClick={() => { setCountry(c); setCountrySearch(c); }}
-                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors">{c}</button>
+                            style={{ width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 14, background: "none", border: "none", cursor: "pointer", color: "var(--ink)", fontFamily: "Inter Tight, system-ui, sans-serif" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(14,23,38,0.06)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                          >{c}</button>
                         ))}
-                        {filteredCountries.length === 0 && <div className="px-4 py-3 text-slate-400 text-sm">No matches</div>}
+                        {filteredCountries.length === 0 && <div style={{ padding: "12px 16px", fontSize: 13, color: "rgba(14,23,38,0.4)" }}>No matches</div>}
                       </div>
                     )}
-                    {country && <div className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><CheckCircle className="w-3 h-3" />{country}</div>}
+                    {country && (
+                      <div style={{ fontSize: 12, color: "var(--flag-green)", fontWeight: 600, marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                        <CheckCircle style={{ width: 12, height: 12 }} /> {country}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Step 1 — Social media accounts */}
               {step === 1 && (
-                <div className="space-y-5">
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Social Media Accounts</h2>
-                    <p className="text-sm text-slate-500 mt-1">All platforms are automatically scraped. Just enter your username or profile URL and we handle the rest.</p>
+                    <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontSize: 26, letterSpacing: "-0.02em", margin: "0 0 4px" }}>
+                      Social Media Accounts
+                    </h2>
+                    <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Enter your username or profile URL — we automatically scrape all major platforms.</p>
                   </div>
-                  <div className="space-y-3">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {accounts.map((acc, i) => (
-                      <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="flex gap-2 items-center p-3">
-                          <select value={acc.platform} onChange={(e) => updateAccount(i, "platform", e.target.value)}
-                            className="border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-32 flex-shrink-0">
+                      <div key={i} style={{ border: "1px solid rgba(14,23,38,0.15)", borderRadius: 12, overflow: "hidden", background: "var(--paper)" }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", padding: 12 }}>
+                          <select
+                            value={acc.platform}
+                            onChange={(e) => updateAccount(i, "platform", e.target.value)}
+                            style={{ border: "1px solid rgba(14,23,38,0.2)", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "var(--paper-soft)", color: "var(--ink)", width: 128, flexShrink: 0, fontFamily: "Inter Tight, system-ui, sans-serif", cursor: "pointer" }}
+                          >
                             {PLATFORMS.map((p) => <option key={p}>{p}</option>)}
                           </select>
-                          <input value={acc.handle} onChange={(e) => updateAccount(i, "handle", e.target.value)}
+                          <input
+                            value={acc.handle}
+                            onChange={(e) => updateAccount(i, "handle", e.target.value)}
                             placeholder="@handle or profile URL"
-                            className="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+                            style={{ flex: 1, border: "1px solid rgba(14,23,38,0.2)", borderRadius: 8, padding: "8px 12px", fontSize: 13, background: "var(--paper)", color: "var(--ink)", fontFamily: "Inter Tight, system-ui, sans-serif", outline: "none" }}
+                          />
                           {AUTO_SCRAPE_PLATFORMS.has(acc.platform) ? (
-                            <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1.5 rounded-lg flex-shrink-0">
-                              Auto
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--flag-green)", background: "rgba(63,107,58,0.1)", border: "1px solid rgba(63,107,58,0.25)", padding: "5px 10px", borderRadius: 6, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em" }}>
+                              AUTO
                             </span>
                           ) : (
                             <button onClick={() => togglePaste(i)}
-                              title="Paste posts — required for this platform"
-                              className={`p-2.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 flex-shrink-0 ${expandedPaste.has(i) ? "bg-blue-100 text-blue-700" : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"}`}>
-                              Paste posts <ChevronDown className={`w-3 h-3 transition-transform ${expandedPaste.has(i) ? "rotate-180" : ""}`} />
+                              style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(185,131,39,0.4)", background: expandedPaste.has(i) ? "rgba(184,146,74,0.15)" : "rgba(184,146,74,0.08)", color: "var(--gold)", display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace" }}>
+                              Paste <ChevronDown style={{ width: 11, height: 11, transform: expandedPaste.has(i) ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
                             </button>
                           )}
                           {accounts.length > 1 && (
-                            <button onClick={() => removeAccount(i)} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors flex-shrink-0">
-                              <Trash2 className="w-4 h-4" />
+                            <button onClick={() => removeAccount(i)} style={{ padding: 8, borderRadius: 8, background: "none", border: "none", cursor: "pointer", color: "rgba(14,23,38,0.35)", display: "flex", flexShrink: 0 }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--flag-red)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(200,59,59,0.07)"; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(14,23,38,0.35)"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}>
+                              <Trash2 style={{ width: 15, height: 15 }} />
                             </button>
                           )}
                         </div>
                         {expandedPaste.has(i) && (
-                          <div className="border-t border-slate-100 bg-slate-50 px-3 pb-3 pt-2">
-                            <label className="text-xs font-semibold text-amber-700 mb-1.5 block">
-                              {acc.platform} cannot be auto-scraped — paste recent posts below
+                          <div style={{ borderTop: "1px solid rgba(14,23,38,0.08)", background: "var(--paper-soft)", padding: "12px 12px 14px" }}>
+                            <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 8 }}>
+                              {acc.platform} — paste recent posts below
                             </label>
                             <textarea
                               value={acc.manual_posts ?? ""}
                               onChange={(e) => updateAccount(i, "manual_posts", e.target.value)}
                               rows={5}
-                              placeholder={"Paste recent posts, one per line or separated by blank lines.\n\nExample:\nJust landed in New York! Excited for the future.\n\nAttended a community event last week."}
-                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white transition-all"
+                              placeholder={"Paste recent posts, one per line.\n\nExample:\nJust landed in New York! Excited for the future.\n\nAttended a community event last week."}
+                              style={{ width: "100%", border: "1px solid rgba(14,23,38,0.2)", borderRadius: 8, padding: "10px 12px", fontSize: 13, background: "var(--paper)", color: "var(--ink)", fontFamily: "Inter Tight, system-ui, sans-serif", resize: "none", outline: "none", lineHeight: 1.5 }}
                             />
-                            <p className="text-xs text-slate-400 mt-1">Copy posts from your profile page and paste them here. The AI will analyze these.</p>
+                            <p style={{ fontSize: 11, color: "rgba(14,23,38,0.45)", marginTop: 6 }}>Copy posts from your profile and paste here. The AI will analyze these.</p>
                           </div>
                         )}
                       </div>
                     ))}
                   </div>
                   {accounts.length < 10 && (
-                    <button onClick={addAccount} className="flex items-center gap-2 text-blue-600 font-semibold text-sm hover:text-blue-700 transition-colors">
-                      <Plus className="w-4 h-4" /> Add Another Account ({accounts.length}/10)
+                    <button onClick={addAccount} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--ink)", background: "none", border: "1px dashed rgba(14,23,38,0.25)", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "Inter Tight, system-ui, sans-serif", width: "fit-content" }}>
+                      <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/10)
                     </button>
                   )}
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 leading-relaxed">
-                    <strong>Privacy Notice:</strong> We only analyze publicly visible posts. We do not require your passwords or store your credentials.
-                    Your information is encrypted and used solely for screening purposes. Each email can be used for up to 3 submissions.
+                  <div style={{ background: "rgba(14,23,38,0.04)", border: "1px solid rgba(14,23,38,0.1)", borderRadius: 10, padding: "14px 16px", fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.6 }}>
+                    <strong style={{ color: "var(--ink)" }}>Privacy Notice:</strong> We only analyze publicly visible posts. We do not require passwords or store credentials. Your data is encrypted and used solely for screening. Each email allows up to 3 submissions.
                   </div>
                 </div>
               )}
 
-              {/* Step 2 — Reason + timeline + consent */}
+              {/* Step 2 — Preferences + consent */}
               {step === 2 && (
-                <div className="space-y-6">
-                  <h2 className="text-xl font-bold text-slate-900">Screening Preferences</h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-3">What&apos;s your reason for social media screening? *</label>
-                    <div className="space-y-2">
+                    <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontSize: 26, letterSpacing: "-0.02em", margin: "0 0 4px" }}>
+                      Screening Preferences
+                    </h2>
+                    <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Help us tailor your report to your situation.</p>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 12 }}>
+                      Reason for screening *
+                    </label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {REASONS.map((r) => (
-                        <label key={r} className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${reason === r ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"}`}>
-                          <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)} className="accent-blue-600 w-4 h-4" />
-                          <span className="text-sm font-medium text-slate-700">{r}</span>
+                        <label key={r} style={{
+                          display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+                          borderRadius: 10, border: reason === r ? "1.5px solid var(--ink)" : "1.5px solid rgba(14,23,38,0.15)",
+                          background: reason === r ? "rgba(14,23,38,0.05)" : "var(--paper)",
+                          cursor: "pointer", transition: "all 0.2s",
+                        }}>
+                          <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)}
+                            style={{ accentColor: "var(--ink)", width: 15, height: 15, flexShrink: 0 }} />
+                          <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{r}</span>
                         </label>
                       ))}
                     </div>
                   </div>
+
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-3">When are you planning to apply for a visa? *</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 12 }}>
+                      Visa application timeline *
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       {TIMELINES.map((t) => (
-                        <label key={t} className={`flex items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 text-sm font-medium ${timeline === t ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 hover:border-slate-300 text-slate-700"}`}>
-                          <input type="radio" name="timeline" value={t} checked={timeline === t} onChange={() => setTimeline(t)} className="accent-blue-600 w-4 h-4" />
-                          {t}
+                        <label key={t} style={{
+                          display: "flex", alignItems: "center", gap: 10, padding: "11px 14px",
+                          borderRadius: 10, border: timeline === t ? "1.5px solid var(--ink)" : "1.5px solid rgba(14,23,38,0.15)",
+                          background: timeline === t ? "rgba(14,23,38,0.05)" : "var(--paper)",
+                          cursor: "pointer", transition: "all 0.2s",
+                        }}>
+                          <input type="radio" name="timeline" value={t} checked={timeline === t} onChange={() => setTimeline(t)}
+                            style={{ accentColor: "var(--ink)", width: 14, height: 14, flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{t}</span>
                         </label>
                       ))}
                     </div>
                   </div>
-                  <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${consent ? "border-blue-500 bg-blue-50" : "border-slate-200"}`}>
-                    <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="accent-blue-600 w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-slate-600 leading-relaxed">
-                      I authorize VisaScreenAI to access and evaluate my submitted profiles for immigration social screening.
+
+                  <label style={{
+                    display: "flex", alignItems: "flex-start", gap: 12, padding: "16px",
+                    borderRadius: 10, border: consent ? "1.5px solid var(--ink)" : "1.5px solid rgba(14,23,38,0.15)",
+                    background: consent ? "rgba(14,23,38,0.05)" : "var(--paper)",
+                    cursor: "pointer", transition: "all 0.2s",
+                  }}>
+                    <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
+                      style={{ accentColor: "var(--ink)", width: 15, height: 15, marginTop: 2, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6 }}>
+                      I authorize <strong style={{ color: "var(--ink)" }}>VisaFootprint</strong> to access and evaluate my submitted profiles for immigration social media screening purposes.
                     </span>
                   </label>
                 </div>
@@ -353,18 +439,25 @@ export default function ScreenPage() {
 
               {/* Step 3 — Processing */}
               {step === 3 && (
-                <div className="text-center py-8">
-                  <div className="relative inline-flex items-center justify-center mb-6">
-                    <div className="w-20 h-20 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
-                    <Shield className="absolute w-8 h-8 text-blue-600" />
+                <div style={{ textAlign: "center", padding: "40px 0" }}>
+                  <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 28 }}>
+                    <div style={{ width: 80, height: 80, borderRadius: "50%", border: "3px solid rgba(14,23,38,0.1)", borderTopColor: "var(--ink)", animation: "spin 1s linear infinite" }} />
+                    <div style={{ position: "absolute" }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="var(--ink)" opacity="0.15"/>
+                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" stroke="var(--ink)" strokeWidth="1.5" fill="none"/>
+                      </svg>
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-3">Analyzing Your Profiles</h2>
-                  <p className="text-slate-500 text-sm mb-2">{processingMsg}</p>
-                  <p className="text-slate-400 text-xs">This usually takes 1–3 minutes. Please keep this tab open.</p>
-                  <div className="mt-8 space-y-2 text-left max-w-xs mx-auto">
-                    {["Scraping public posts","Running AI risk analysis","Generating PDF report"].map((m) => (
-                      <div key={m} className="flex items-center gap-2 text-sm text-slate-500">
-                        <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin flex-shrink-0" />
+                  <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontSize: 28, letterSpacing: "-0.02em", margin: "0 0 12px" }}>
+                    Analyzing Your Profiles
+                  </h2>
+                  <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: "0 0 6px" }}>{processingMsg}</p>
+                  <p style={{ fontSize: 12, color: "rgba(14,23,38,0.4)", margin: "0 0 36px" }}>This usually takes 1–3 minutes. Please keep this tab open.</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left", maxWidth: 260, margin: "0 auto" }}>
+                    {["Scraping public posts", "Running AI risk analysis", "Generating PDF report"].map((m) => (
+                      <div key={m} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--ink-soft)" }}>
+                        <Loader2 style={{ width: 13, height: 13, color: "var(--ink)", flexShrink: 0, animation: "spin 1s linear infinite" }} />
                         {m}
                       </div>
                     ))}
@@ -374,8 +467,9 @@ export default function ScreenPage() {
 
               {/* Error */}
               {error && (
-                <div className="mt-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{error}
+                <div style={{ marginTop: 16, display: "flex", alignItems: "flex-start", gap: 10, background: "rgba(200,59,59,0.08)", border: "1px solid rgba(200,59,59,0.25)", color: "var(--flag-red)", padding: "12px 16px", borderRadius: 10, fontSize: 13 }}>
+                  <AlertCircle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />
+                  {error}
                 </div>
               )}
             </motion.div>
@@ -383,25 +477,58 @@ export default function ScreenPage() {
 
           {/* Navigation */}
           {step < 3 && (
-            <div className="flex justify-between items-center px-8 pb-8 pt-0">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 36px 32px" }}>
               {step > 0 ? (
-                <button onClick={goBack} className="flex items-center gap-1 text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors">
-                  <ChevronLeft className="w-4 h-4" /> Back
+                <button onClick={goBack} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: "var(--ink-soft)", background: "none", border: "none", cursor: "pointer", fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                  <ChevronLeft style={{ width: 16, height: 16 }} /> Back
                 </button>
               ) : <div />}
               {step < totalSteps - 1 ? (
-                <button onClick={handleNext} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg">
-                  Continue <ChevronRight className="w-4 h-4" />
+                <button onClick={handleNext} style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  padding: "14px 28px", borderRadius: 999,
+                  background: "var(--ink)", color: "var(--paper)",
+                  fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer",
+                  fontFamily: "Inter Tight, system-ui, sans-serif",
+                  transition: "background 0.2s, transform 0.15s",
+                }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--oxblood)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--ink)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}
+                >
+                  Continue <ChevronRight style={{ width: 16, height: 16 }} />
                 </button>
               ) : (
-                <button onClick={handleSubmit} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/30">
-                  <Shield className="w-4 h-4" /> Get My Screening Report
+                <button onClick={handleSubmit} style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  padding: "14px 32px", borderRadius: 999,
+                  background: "var(--ink)", color: "var(--paper)",
+                  fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer",
+                  fontFamily: "Inter Tight, system-ui, sans-serif",
+                  transition: "background 0.2s, transform 0.15s",
+                }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--oxblood)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--ink)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="var(--paper)" opacity="0.9"/>
+                    <path d="M9 12l2 2 4-4" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Get My Screening Report
                 </button>
               )}
             </div>
           )}
         </div>
+
+        {/* Footer note */}
+        <p style={{ textAlign: "center", fontSize: 12, color: "rgba(14,23,38,0.4)", marginTop: 24, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em" }}>
+          Powered by VisaFootprint · INA §212-grounded AI · No passwords required
+        </p>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
