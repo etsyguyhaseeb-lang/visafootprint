@@ -296,11 +296,14 @@ export default function HomePage() {
       {/* FINAL CTA */}
       <div className={s.finalCta}>
         <svg className={s.finalCtaMark} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M9 21c-1.5 0-2.5-1-2.5-2.5 0-1.2.6-2.3 1.4-3.5.9-1.4 1.6-2.5 1.6-4.5 0-3.5 1.5-6 4-6 2 0 3.5 1.8 3.5 4.5 0 2.5-1 4-2 5.5-1 1.5-2 2.8-2 4.5 0 1.3-1 2-2 2H9z" fill="#B8924A"/>
-          <circle cx="6" cy="6" r="1.4" fill="#B8924A"/>
-          <circle cx="9" cy="3.5" r="1.2" fill="#B8924A"/>
-          <circle cx="13" cy="2.8" r="1.1" fill="#B8924A"/>
-          <circle cx="17" cy="3.8" r="1" fill="#B8924A"/>
+          <line x1="12" y1="2" x2="12" y2="22" stroke="#B8924A" strokeWidth="1.2" strokeLinecap="round"/>
+          <line x1="3" y1="7" x2="21" y2="7" stroke="#B8924A" strokeWidth="1.2" strokeLinecap="round"/>
+          <line x1="6" y1="7" x2="6" y2="14" stroke="#B8924A" strokeWidth="0.9" strokeLinecap="round"/>
+          <line x1="18" y1="7" x2="18" y2="14" stroke="#B8924A" strokeWidth="0.9" strokeLinecap="round"/>
+          <path d="M2.5 14 Q6 18.5 9.5 14" stroke="#B8924A" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+          <path d="M14.5 14 Q18 18.5 21.5 14" stroke="#B8924A" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+          <line x1="9" y1="22" x2="15" y2="22" stroke="#B8924A" strokeWidth="1.2" strokeLinecap="round"/>
+          <circle cx="12" cy="2" r="0.9" fill="#B8924A"/>
         </svg>
         <h2>Your application is one post away from a problem.<br /><em>Find it before they do.</em></h2>
         <p>Free scan in under 3 minutes. No credit card. No account.</p>
