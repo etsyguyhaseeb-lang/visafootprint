@@ -1,102 +1,24 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import {
-  Shield, Download, AlertTriangle, CheckCircle, Info,
-  ChevronDown, ChevronUp, Globe, ArrowLeft, Loader2
-} from "lucide-react";
-import { getReport, getPdfUrl, type ReportData, type FlaggedPost } from "@/lib/api";
+import { getReport, getPdfUrl, type ReportData } from "@/lib/api";
+import CheckoutButton from "@/components/CheckoutButton";
 
-const PLATFORM_ICONS: Record<string, string> = {
-  "Twitter/X": "🐦", Instagram: "📷", TikTok: "🎵",
-  LinkedIn: "💼", Facebook: "📘", YouTube: "▶️",
-};
-
-function riskColor(level: string) {
-  const l = level?.toUpperCase();
-  if (l === "HIGH")   return "text-red-600 bg-red-50 border-red-200";
-  if (l === "MEDIUM") return "text-amber-600 bg-amber-50 border-amber-200";
-  return "text-green-600 bg-green-50 border-green-200";
+function shortId(id: string) {
+  return "VF-" + id.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 
-function riskDot(level: string) {
-  const l = level?.toUpperCase();
-  if (l === "HIGH")   return "bg-red-500";
-  if (l === "MEDIUM") return "bg-amber-500";
-  return "bg-green-500";
+function scoreClass(score: number): string {
+  if (score >= 60) return "red";
+  if (score >= 30) return "amber";
+  return "green";
 }
 
-function scoreColor(score: number) {
-  if (score >= 60) return "text-red-600";
-  if (score >= 30) return "text-amber-600";
-  return "text-green-600";
-}
-
-function ScoreBar({ score, label }: { score: number; label: string }) {
-  const color = score >= 60 ? "bg-red-500" : score >= 30 ? "bg-amber-500" : "bg-green-500";
-  const textColor = score >= 60 ? "text-red-600" : score >= 30 ? "text-amber-600" : "text-green-600";
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
-        <span className={`text-sm font-extrabold ${textColor}`}>{score}</span>
-      </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <motion.div
-          className={`h-full rounded-full ${color}`}
-          initial={{ width: 0 }}
-          animate={{ width: `${score}%` }}
-          transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function FlaggedCard({ post }: { post: FlaggedPost }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${riskColor(post.risk_level)} border`}>
-      <button onClick={() => setOpen((v) => !v)} className="w-full text-left p-4 flex items-start justify-between gap-3 hover:opacity-90 transition-opacity">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${riskColor(post.risk_level)}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${riskDot(post.risk_level)}`} />
-            {post.risk_level}
-          </span>
-          <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">{post.risk_category}</div>
-            <div className="text-xs opacity-70 mt-0.5">
-              {PLATFORM_ICONS[post.platform] ?? "📱"} {post.platform} {post.date ? `· ${post.date}` : ""}
-            </div>
-          </div>
-        </div>
-        {open ? <ChevronUp className="w-4 h-4 flex-shrink-0 mt-0.5" /> : <ChevronDown className="w-4 h-4 flex-shrink-0 mt-0.5" />}
-      </button>
-      {open && (
-        <div className="px-4 pb-4 space-y-3 border-t border-current border-opacity-20">
-          <blockquote className="bg-white/60 rounded-lg p-3 text-sm italic text-slate-700 leading-relaxed mt-3">
-            &ldquo;{post.text}&rdquo;
-          </blockquote>
-          <p className="text-sm leading-relaxed">{post.explanation}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SentimentBar({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-slate-500 w-16 flex-shrink-0">{label}</span>
-      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-        <motion.div className={`h-full rounded-full ${color}`} initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 1, delay: 0.5 }} />
-      </div>
-      <span className="text-xs font-semibold text-slate-600 w-8 text-right">{value}%</span>
-    </div>
-  );
+function riskVerdict(risk: string): string {
+  const r = (risk ?? "").toUpperCase();
+  if (r === "HIGH")   return "High risk — immediate action required";
+  if (r === "MEDIUM") return "Moderate risk — action recommended";
+  return "Low risk — profile looks clean";
 }
 
 export default function ReportPage() {
@@ -107,189 +29,300 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!id) return;
-    getReport(id)
+    getReport(id as string)
       .then((data) => { setReport(data); setLoading(false); })
       .catch((e) => { setErr(e.message); setLoading(false); });
   }, [id]);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 pt-16">
-      <div className="text-center">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
-        <p className="text-slate-500">Loading your report…</p>
+    <div style={{ minHeight: "100vh", background: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 80 }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 44, height: 44, border: "3px solid var(--gold)", borderTopColor: "transparent", borderRadius: "50%", margin: "0 auto 16px", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.15em", color: "rgba(14,23,38,0.5)", textTransform: "uppercase" }}>Loading your report…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   );
 
   if (err || !report) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 pt-16">
-      <div className="text-center max-w-sm px-4">
-        <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-slate-900 mb-2">Report Not Found</h2>
-        <p className="text-slate-500 text-sm mb-4">{err || "This report may still be processing. Please wait a moment and refresh."}</p>
-        <Link href="/screen" className="text-blue-600 font-semibold text-sm hover:underline">Start a new screening →</Link>
+    <div style={{ minHeight: "100vh", background: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 80 }}>
+      <div style={{ textAlign: "center", maxWidth: 400, padding: "0 24px" }}>
+        <div style={{ width: 52, height: 52, background: "rgba(122,31,31,0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--oxblood)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="1" fill="var(--oxblood)" stroke="none"/></svg>
+        </div>
+        <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 22, marginBottom: 10 }}>Report Not Found</h2>
+        <p style={{ color: "rgba(14,23,38,0.6)", fontSize: 14, marginBottom: 20 }}>{err || "This report may still be processing. Refresh in a moment."}</p>
+        <a href="/screen" style={{ color: "var(--oxblood)", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>← Start a new screening</a>
       </div>
     </div>
   );
 
-  const overall = report.overall_risk ?? "LOW";
-  const overallBadge = riskColor(overall);
+  const overall = (report.overall_risk ?? "LOW").toUpperCase();
+  const score = report.risk_score ?? 0;
+  const highFlags = (report.flagged_posts ?? []).filter(f => f.risk_level?.toUpperCase() === "HIGH");
+  const medFlags  = (report.flagged_posts ?? []).filter(f => f.risk_level?.toUpperCase() === "MEDIUM");
+  const hasFlags  = (report.flagged_posts ?? []).length > 0;
+  const rid = shortId(id as string);
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-20 pb-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div style={{ background: "var(--paper)", minHeight: "100vh" }}>
 
-        {/* Back */}
-        <Link href="/" className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700 text-sm font-medium mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Home
-        </Link>
-
-        {/* Report header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl shadow-lg">
-                {(report.name ?? "?")[0].toUpperCase()}
-              </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-slate-900">{report.name}</h1>
-                <div className="text-sm text-slate-500 mt-0.5 flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5" /> {report.country}
-                  <span className="text-slate-300">·</span>
-                  {report.posts_analyzed ?? 0} posts analyzed
-                  <span className="text-slate-300">·</span>
-                  {(report.platforms_analyzed ?? []).length} platforms
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full border ${overallBadge}`}>
-                <span className={`w-2 h-2 rounded-full ${riskDot(overall)}`} />
-                {overall} RISK
-              </span>
-              <a href={getPdfUrl(id!)} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg">
-                <Download className="w-4 h-4" /> Download PDF
-              </a>
-            </div>
+      {/* ── SUCCESS BANNER ── */}
+      <div style={{
+        background: "linear-gradient(135deg, var(--ink) 0%, #1B2741 100%)",
+        color: "var(--paper)", padding: "56px 32px 64px", position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", right: -120, top: "50%", transform: "translateY(-50%)", width: 380, height: 380, background: "radial-gradient(circle, rgba(184,146,74,0.12) 0%, transparent 65%)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.2em", color: "var(--gold)", textTransform: "uppercase", marginBottom: 18 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Scan complete · {rid}
           </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* AI Summary */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-blue-600" /> AI Summary
-              </h2>
-              <p className="text-slate-600 text-sm leading-relaxed">{report.summary}</p>
-              {(report.risk_topics ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {report.risk_topics.map((t) => (
-                    <span key={t} className="bg-slate-100 text-slate-700 text-xs font-medium px-3 py-1 rounded-full">{t}</span>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-
-            {/* Flagged posts */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Flagged Content
-                <span className="ml-auto text-xs font-medium bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                  {(report.flagged_posts ?? []).length} posts
-                </span>
-              </h2>
-              {(report.flagged_posts ?? []).length === 0 ? (
-                <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-xl p-4 text-sm">
-                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                  No concerning posts identified. Your profile looks clean.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {report.flagged_posts.map((fp, i) => <FlaggedCard key={i} post={fp} />)}
-                </div>
-              )}
-            </motion.div>
-
-            {/* Recommendations */}
-            {(report.recommendations ?? []).length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-600" /> Recommendations
-                </h2>
-                <ul className="space-y-3">
-                  {report.recommendations.map((r, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
-                      <span className="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Right column */}
-          <div className="space-y-6">
-
-            {/* Risk scores */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4">Risk Scores</h2>
-              <div className="space-y-3 mb-4">
-                <ScoreBar score={report.scores?.political ?? 0} label="Political" />
-                <ScoreBar score={report.scores?.content ?? 0}   label="Content" />
-                <ScoreBar score={report.scores?.network ?? 0}   label="Network" />
-              </div>
-              <div className="pt-4 border-t border-slate-100 text-center">
-                <div className={`text-3xl font-extrabold ${scoreColor(report.risk_score ?? 0)}`}>{report.risk_score ?? 0}</div>
-                <div className="text-xs text-slate-400 mt-0.5">Overall Risk Score</div>
-              </div>
-            </motion.div>
-
-            {/* Sentiment */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4">Content Sentiment</h2>
-              <div className="space-y-3">
-                <SentimentBar label="Positive" value={report.sentiment?.positive ?? 0} color="bg-green-500" />
-                <SentimentBar label="Neutral"  value={report.sentiment?.neutral ?? 0}  color="bg-slate-300" />
-                <SentimentBar label="Negative" value={report.sentiment?.negative ?? 0} color="bg-red-500" />
-              </div>
-            </motion.div>
-
-            {/* Overall assessment */}
-            {report.overall_assessment && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                className="bg-[#0A1628] rounded-2xl p-6 text-white">
-                <h2 className="text-base font-bold mb-3 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-400" /> Overall Assessment
-                </h2>
-                <p className="text-slate-300 text-sm leading-relaxed">{report.overall_assessment}</p>
-              </motion.div>
-            )}
-
-            {/* Download CTA */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-              className="bg-blue-600 rounded-2xl p-5 text-white text-center">
-              <Download className="w-6 h-6 mx-auto mb-2 text-blue-200" />
-              <div className="font-bold mb-1">Download Full PDF Report</div>
-              <div className="text-blue-200 text-xs mb-3">Includes all flagged posts, risk analysis, and recommendations</div>
-              <a href={getPdfUrl(id!)} target="_blank" rel="noopener noreferrer"
-                className="block bg-white text-blue-700 font-bold py-2.5 rounded-xl text-sm hover:bg-blue-50 transition-colors">
-                Download PDF
-              </a>
-            </motion.div>
-          </div>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontSize: "clamp(32px, 4.5vw, 54px)", lineHeight: 1.05, letterSpacing: "-0.025em", marginBottom: 16, maxWidth: 880 }}>
+            Your report is ready, {report.name.split(" ")[0]}.<br />
+            <em style={{ fontStyle: "italic", color: "var(--gold)", fontWeight: 500 }}>Here's what we found.</em>
+          </h1>
+          <p style={{ fontSize: 15, color: "rgba(245,241,232,0.72)", maxWidth: 640 }}>
+            {report.accounts?.length ?? 1} account{(report.accounts?.length ?? 1) !== 1 ? "s" : ""} · 5-year lookback · {report.posts_analyzed ?? 0} posts analyzed · {report.country}
+          </p>
         </div>
       </div>
+
+      {/* ── MAIN GRID ── */}
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "56px 32px 96px", display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 48, alignItems: "flex-start" }}>
+
+        {/* ── LEFT: REPORT CARD ── */}
+        <div style={{ background: "var(--paper)", border: "1px solid rgba(14,23,38,0.18)", borderRadius: 4, padding: 40, boxShadow: "0 2px 0 rgba(14,23,38,0.04)" }}>
+
+          {/* Report header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--ink)", paddingBottom: 18, marginBottom: 28 }}>
+            <div>
+              <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 26, letterSpacing: "-0.01em", marginBottom: 6 }}>Risk Screening Report</h2>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.05em", color: "#1B2741" }}>
+                {report.reason} · {report.country} · Generated {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+              </div>
+            </div>
+            <div style={{ border: `1.5px solid var(--oxblood)`, color: "var(--oxblood)", padding: "6px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", whiteSpace: "nowrap" }}>
+              Final
+            </div>
+          </div>
+
+          {/* Overall verdict */}
+          <div style={{ background: "var(--ink)", color: "var(--paper)", padding: "24px 28px", marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 24 }}>
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.2em", color: "var(--gold)", textTransform: "uppercase", marginBottom: 6 }}>Overall Risk</div>
+              <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 22, letterSpacing: "-0.01em" }}>{riskVerdict(overall)}</div>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontSize: 64, lineHeight: 1, color: score >= 60 ? "#C83B3B" : score >= 30 ? "#C98B27" : "#3F6B3A", letterSpacing: "-0.03em" }}>{score}</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "rgba(245,241,232,0.55)" }}>/ 100</div>
+            </div>
+          </div>
+
+          {/* Category breakdown */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 28 }}>
+            {[
+              { label: "Political", val: report.scores?.political ?? 0 },
+              { label: "Content",   val: report.scores?.content ?? 0 },
+              { label: "Network",   val: report.scores?.network ?? 0 },
+            ].map(({ label, val }) => {
+              const cls = scoreClass(val);
+              const clr = cls === "red" ? "#C83B3B" : cls === "amber" ? "#C98B27" : "#3F6B3A";
+              const bg  = cls === "red" ? "rgba(200,59,59,0.07)" : cls === "amber" ? "rgba(201,139,39,0.07)" : "rgba(63,107,58,0.07)";
+              return (
+                <div key={label} style={{ border: "1px solid rgba(14,23,38,0.15)", padding: 16, background: bg }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.18em", color: "#1B2741", textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 38, lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 4, color: clr }}>{val}</div>
+                  <div style={{ fontSize: 12, color: "#1B2741" }}>{val >= 60 ? "Flagged" : val >= 30 ? "Watch" : "Clear"}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Risk context alert */}
+          {hasFlags && (
+            <div style={{ background: "rgba(122,31,31,0.06)", border: "1px solid rgba(122,31,31,0.2)", padding: "18px 20px", marginBottom: 28, display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: "var(--oxblood)", color: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 16 }}>!</div>
+              <div style={{ fontSize: 14, lineHeight: 1.55, color: "var(--ink)" }}>
+                <strong style={{ color: "var(--oxblood)" }}>
+                  Your profile has {highFlags.length > 0 ? `${highFlags.length} high-priority item${highFlags.length > 1 ? "s" : ""} requiring immediate action` : `${medFlags.length} item${medFlags.length > 1 ? "s" : ""} requiring attention`}.
+                </strong>{" "}
+                {report.summary}
+              </div>
+            </div>
+          )}
+
+          {/* HIGH priority flags */}
+          {highFlags.length > 0 && (
+            <>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.2em", color: "var(--oxblood)", textTransform: "uppercase", margin: "32px 0 16px", paddingBottom: 10, borderBottom: "1px solid rgba(14,23,38,0.15)" }}>
+                ↑ High priority · Take action now
+              </div>
+              {highFlags.map((post, i) => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 16, padding: "18px 0", borderTop: i === 0 ? "none" : "1px dashed rgba(14,23,38,0.2)", alignItems: "flex-start" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(200,59,59,0.12)", color: "#C83B3B", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 16, flexShrink: 0 }}>{i + 1}</div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.15em", color: "#1B2741", textTransform: "uppercase", marginBottom: 4 }}>{post.platform}{post.date ? ` · ${post.date}` : ""}</div>
+                    <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: "var(--ink)", marginBottom: 6 }}>&ldquo;{post.text}&rdquo;</div>
+                    <div style={{ fontSize: 13, color: "#1B2741", lineHeight: 1.5 }}>{post.explanation}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, padding: "6px 12px", background: "#C83B3B", color: "white", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", alignSelf: "flex-start" }}>Delete</div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* MEDIUM priority flags */}
+          {medFlags.length > 0 && (
+            <>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.2em", color: "var(--oxblood)", textTransform: "uppercase", margin: "32px 0 16px", paddingBottom: 10, borderBottom: "1px solid rgba(14,23,38,0.15)" }}>
+                → Medium priority · Archive &amp; prepare
+              </div>
+              {medFlags.map((post, i) => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 16, padding: "18px 0", borderTop: i === 0 ? "none" : "1px dashed rgba(14,23,38,0.2)", alignItems: "flex-start" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(201,139,39,0.15)", color: "#C98B27", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 16, flexShrink: 0 }}>{highFlags.length + i + 1}</div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.15em", color: "#1B2741", textTransform: "uppercase", marginBottom: 4 }}>{post.platform}{post.date ? ` · ${post.date}` : ""}</div>
+                    <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: "var(--ink)", marginBottom: 6 }}>&ldquo;{post.text}&rdquo;</div>
+                    <div style={{ fontSize: 13, color: "#1B2741", lineHeight: 1.5 }}>{post.explanation}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, padding: "6px 12px", background: "#C98B27", color: "white", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", alignSelf: "flex-start" }}>Archive</div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* No flags */}
+          {!hasFlags && (
+            <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(63,107,58,0.08)", border: "1px solid rgba(63,107,58,0.25)", padding: "20px 22px", marginBottom: 28 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3F6B3A" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <div style={{ fontSize: 14, color: "var(--ink)" }}><strong style={{ color: "#3F6B3A" }}>No concerning posts identified.</strong> Your public profiles look clean across all platforms scanned.</div>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {(report.recommendations ?? []).length > 0 && (
+            <>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.2em", color: "var(--oxblood)", textTransform: "uppercase", margin: "32px 0 16px", paddingBottom: 10, borderBottom: "1px solid rgba(14,23,38,0.15)" }}>
+                Recommendations
+              </div>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                {report.recommendations.map((r, i) => (
+                  <li key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px dashed rgba(14,23,38,0.15)", fontSize: 14, lineHeight: 1.55, color: "var(--ink)" }}>
+                    <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", background: "var(--ink)", color: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600 }}>{i + 1}</span>
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* Download row */}
+          <div style={{ marginTop: 36, paddingTop: 28, borderTop: "1px solid rgba(14,23,38,0.15)", display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <a href={getPdfUrl(id as string)} target="_blank" rel="noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 28px", background: "var(--ink)", color: "var(--paper)", textDecoration: "none", fontWeight: 600, fontSize: 14, borderRadius: 999, transition: "background 0.2s" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--oxblood)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "var(--ink)")}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download full PDF report →
+            </a>
+            <a href="/"
+              style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 28px", background: "transparent", color: "var(--ink)", border: "1px solid rgba(14,23,38,0.25)", textDecoration: "none", fontWeight: 600, fontSize: 14, borderRadius: 999 }}>
+              ← Back to home
+            </a>
+          </div>
+        </div>
+
+        {/* ── RIGHT: MONITOR UPSELL ── */}
+        <div style={{ position: "sticky", top: 96, display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Upsell card */}
+          <div style={{ background: "var(--ink)", color: "var(--paper)", padding: 32, position: "relative", overflow: "hidden", border: "1px solid var(--gold)", boxShadow: "0 0 0 4px rgba(184,146,74,0.12)", animation: "rise 0.7s cubic-bezier(.2,.7,.3,1) backwards", animationDelay: "0.3s" }}>
+            <div style={{ position: "absolute", top: -40, right: -40, width: 200, height: 200, background: "radial-gradient(circle, rgba(184,146,74,0.18) 0%, transparent 65%)", pointerEvents: "none" }} />
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.2em", color: "var(--gold)", textTransform: "uppercase", marginBottom: 18 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--gold)", boxShadow: "0 0 0 0 rgba(184,146,74,0.5)", animation: "pulse 2s infinite", display: "inline-block" }} />
+              Recommended for your case
+            </div>
+
+            <h3 style={{ fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 26, lineHeight: 1.15, letterSpacing: "-0.015em", marginBottom: 14 }}>
+              Your visa case stays open for <em style={{ fontStyle: "italic", color: "var(--gold)" }}>9–14 months.</em> Your social media stays active that whole time.
+            </h3>
+
+            <div style={{ background: "rgba(245,241,232,0.06)", borderLeft: "3px solid var(--gold)", padding: "16px 18px", margin: "20px 0 24px", fontSize: 14, lineHeight: 1.55, color: "rgba(245,241,232,0.92)" }}>
+              <strong style={{ color: "var(--gold)" }}>73%</strong> of applicants whose first scan returned amber or red flags add Monitor. Most cases stay open for <strong style={{ color: "var(--gold)" }}>9 months</strong> on average — every new post is a new risk.
+            </div>
+
+            <ul style={{ listStyle: "none", margin: "0 0 28px", padding: 0 }}>
+              {[
+                ["Weekly automated re-scans", "of your accounts"],
+                ["Alerts within 48 hours", "when new flags appear"],
+                ["Unlimited pre-interview deep scans", "on demand"],
+                ["Quarterly mini-report PDF", "for you or your attorney"],
+                ["Cancel anytime", "from your dashboard"],
+              ].map(([bold, rest], i) => (
+                <li key={i} style={{ padding: "9px 0", fontSize: 13.5, lineHeight: 1.5, display: "flex", gap: 12, alignItems: "flex-start", color: "rgba(245,241,232,0.88)", borderBottom: "1px dashed rgba(245,241,232,0.12)" }}>
+                  <span style={{ color: "var(--gold)", fontWeight: 600, flexShrink: 0, marginTop: 2 }}>✓</span>
+                  <span><strong style={{ color: "var(--paper)", fontWeight: 600 }}>{bold}</strong> {rest}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "18px 0 22px", borderTop: "1px solid rgba(245,241,232,0.15)", marginBottom: 18 }}>
+              <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ fontSize: 22, color: "rgba(184,146,74,0.7)" }}>$</span>
+                <span style={{ fontSize: 56, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--gold)" }}>19</span>
+                <span style={{ fontSize: 13, color: "rgba(245,241,232,0.6)", marginLeft: 6, fontFamily: "'Inter Tight', sans-serif" }}>/ month</span>
+              </div>
+              <div style={{ textAlign: "right", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", color: "rgba(245,241,232,0.55)", textTransform: "uppercase" }}>
+                No commitment<br />Cancel anytime
+              </div>
+            </div>
+
+            <CheckoutButton
+              tier="monitor"
+              style={{ display: "block", textAlign: "center", width: "100%", padding: "16px 24px", background: "var(--gold)", color: "var(--ink)", fontWeight: 700, fontSize: 15, border: "none", letterSpacing: "0.02em", borderRadius: 0 }}
+            >
+              Add Monitor — $19/month →
+            </CheckoutButton>
+
+            <a href="/" style={{ display: "block", textAlign: "center", width: "100%", padding: 12, background: "transparent", color: "rgba(245,241,232,0.55)", textDecoration: "none", fontSize: 12.5, marginTop: 8, transition: "color 0.2s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "rgba(245,241,232,0.85)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "rgba(245,241,232,0.55)")}>
+              No thanks · I'll come back if I need it
+            </a>
+
+            <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid rgba(245,241,232,0.1)", display: "flex", gap: 16, flexWrap: "wrap", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.1em", color: "rgba(245,241,232,0.5)", textTransform: "uppercase" }}>
+              <span>Stripe secure checkout</span>
+              <span>·</span>
+              <span>30-day data purge on cancel</span>
+            </div>
+          </div>
+
+          {/* Social proof */}
+          <div style={{ background: "var(--paper)", border: "1px solid rgba(14,23,38,0.15)", padding: 24, animation: "rise 0.7s cubic-bezier(.2,.7,.3,1) backwards", animationDelay: "0.5s" }}>
+            <blockquote style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.45, color: "var(--ink)", marginBottom: 14 }}>
+              <span style={{ color: "var(--oxblood)", fontFamily: "'Fraunces', serif", fontSize: 32, lineHeight: 0, verticalAlign: "-8px", marginRight: 4 }}>"</span>
+              I added Monitor right after my first scan. Two months later it caught a friend's tagged post that would've come up in my interview. Worth every dollar.
+            </blockquote>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.15em", color: "#1B2741", textTransform: "uppercase" }}>— R.K. · F-1 Visa, Approved</div>
+          </div>
+
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes spin  { to { transform: rotate(360deg); } }
+        @keyframes rise  { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(184,146,74, 0.5); }
+          70%  { box-shadow: 0 0 0 12px rgba(184,146,74, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(184,146,74, 0); }
+        }
+        @media (max-width: 980px) {
+          .report-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
