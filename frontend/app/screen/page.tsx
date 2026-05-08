@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -89,7 +89,7 @@ const VisaFootprintMark = () => (
   </div>
 );
 
-export default function ScreenPage() {
+function ScreenPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
@@ -601,5 +601,13 @@ export default function ScreenPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
+  );
+}
+
+export default function ScreenPage() {
+  return (
+    <Suspense>
+      <ScreenPageInner />
+    </Suspense>
   );
 }
