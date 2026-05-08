@@ -176,8 +176,13 @@ function ScreenPageInner() {
     let mi = 0;
     const interval = setInterval(() => { mi = (mi + 1) % msgs.length; setProcessingMsg(msgs[mi]); }, 4000);
     try {
+      const PLATFORM_MAP: Record<string, string> = {
+        "twitter/x": "twitter", "twitter": "twitter", "x": "twitter",
+        "instagram": "instagram", "tiktok": "tiktok",
+        "linkedin": "linkedin", "facebook": "facebook", "youtube": "youtube",
+      };
       const validAccounts = accounts.filter((a) => a.handle.trim()).map((a) => ({
-        platform: a.platform.toLowerCase().replace("/", "").replace("twitter", "twitter").replace("x", "twitter"),
+        platform: PLATFORM_MAP[a.platform.toLowerCase()] ?? a.platform.toLowerCase(),
         handle: a.handle.trim(),
         ...(a.manual_posts?.trim() ? { manual_posts: a.manual_posts.trim() } : {}),
       }));
