@@ -352,16 +352,22 @@ async def submit_screening(
 
     is_free = req.tier == "free"
 
+    _UPGRADE_MSG = "UPGRADE_REQUIRED: You've used your free scan. Upgrade to Standard ($49), Attorney-Reviewed ($199), or Monitor ($19/mo) to continue."
+
     if is_free:
-        # Free tier: 1 scan per device (IP), lifetime — checked in DB so it survives restarts
+        # Block by IP (lifetime, persisted in DB)
         ip_used = await db.execute(
             select(FreeIPUsage).where(FreeIPUsage.ip_address == client_ip)
         )
         if ip_used.scalar_one_or_none():
-            raise HTTPException(
-                status_code=429,
-                detail="UPGRADE_REQUIRED: You've used your free scan. Upgrade to Standard ($49), Attorney-Reviewed ($199), or Monitor ($19/mo) to continue.",
-            )
+            raise HTTPException(status_code=429, detail=_UPGRADE_MSG)
+
+        # Block by email (lifetime) — catches same person on a different network
+        email_count = await db.execute(
+            select(func.count()).where(Submission.email == req.email)
+        )
+        if (email_count.scalar() or 0) >= 1:
+            raise HTTPException(status_code=429, detail=_UPGRADE_MSG)
     else:
         # Paid tier: verify payment record exists for this email
         paid_check = await db.execute(
