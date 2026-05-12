@@ -98,6 +98,8 @@ function ScreenPageInner() {
   const [processingMsg, setProcessingMsg] = useState("Analyzing your profiles…");
   const [tier, setTier] = useState<"free" | "standard" | "attorney" | "monitor">("free");
   const [tierVerifying, setTierVerifying] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [upsellReason, setUpsellReason] = useState<"limit" | "timed">("timed");
   const maxAccounts = TIER_LIMITS[tier] ?? 1;
 
   useEffect(() => {
@@ -112,6 +114,13 @@ function ScreenPageInner() {
       .catch(() => {})
       .finally(() => setTierVerifying(false));
   }, []);
+
+  // 5-second upsell timer on accounts step — only for paid tiers
+  useEffect(() => {
+    if (step !== 1 || tier === "free") return;
+    const t = setTimeout(() => { setUpsellReason("timed"); setUpsellOpen(true); }, 5000);
+    return () => clearTimeout(t);
+  }, [step, tier]);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -197,8 +206,15 @@ function ScreenPageInner() {
       setTimeout(poll, 3000);
     } catch (e: unknown) {
       clearInterval(interval);
-      setError(e instanceof Error ? e.message : "Submission failed. Please try again.");
-      setStep(2);
+      const msg = e instanceof Error ? e.message : "Submission failed. Please try again.";
+      if (msg.startsWith("UPGRADE_REQUIRED:")) {
+        setUpsellReason("limit");
+        setUpsellOpen(true);
+        setStep(1);
+      } else {
+        setError(msg);
+        setStep(2);
+      }
     }
   };
 
@@ -411,30 +427,10 @@ function ScreenPageInner() {
                       </div>
                     ))}
                   </div>
-                  {accounts.length < maxAccounts ? (
+                  {accounts.length < maxAccounts && (
                     <button onClick={addAccount} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--ink)", background: "none", border: "1px dashed rgba(14,23,38,0.25)", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "Inter Tight, system-ui, sans-serif", width: "fit-content" }}>
                       <Plus style={{ width: 14, height: 14 }} /> Add Account ({accounts.length}/{maxAccounts})
                     </button>
-                  ) : (
-                    <div style={{ border: "1px solid rgba(184,146,74,0.35)", borderRadius: 12, padding: "16px", background: "rgba(184,146,74,0.05)" }}>
-                      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gold)", margin: "0 0 12px", fontWeight: 600 }}>
-                        Free plan — 1 account only. Upgrade to scan more.
-                      </p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <CheckoutButton tier="standard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
-                          <span>Standard Scan — 3 accounts</span>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.8 }}>$49 one-time →</span>
-                        </CheckoutButton>
-                        <CheckoutButton tier="attorney" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--ink)", border: "1.5px solid rgba(14,23,38,0.2)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
-                          <span>Attorney-Reviewed — 10 accounts</span>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.7 }}>$199 one-time →</span>
-                        </CheckoutButton>
-                        <CheckoutButton tier="monitor" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--gold)", border: "1.5px solid rgba(184,146,74,0.4)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
-                          <span>VisaFootprint Monitor — 3 accounts</span>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.8 }}>$19/mo →</span>
-                        </CheckoutButton>
-                      </div>
-                    </div>
                   )}
                   <div style={{ background: "rgba(14,23,38,0.04)", border: "1px solid rgba(14,23,38,0.1)", borderRadius: 10, padding: "14px 16px", fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.6 }}>
                     <strong style={{ color: "var(--ink)" }}>Privacy Notice:</strong> We only analyze publicly visible posts. We do not require passwords or store credentials. Your data is encrypted and used solely for screening purposes.
@@ -602,8 +598,87 @@ function ScreenPageInner() {
         </p>
       </div>
 
+      {/* ── UPSELL POPUP ── */}
+      {upsellOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(14,23,38,0.72)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setUpsellOpen(false); }}>
+          <div style={{ background: "var(--paper)", borderRadius: 16, padding: "36px 32px 28px", maxWidth: 480, width: "100%", position: "relative", boxShadow: "0 24px 64px rgba(14,23,38,0.3)", animation: "popIn 0.25s cubic-bezier(.2,.8,.3,1)" }}>
+
+            {/* Close */}
+            <button onClick={() => setUpsellOpen(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "rgba(14,23,38,0.4)", padding: 6, borderRadius: 8, lineHeight: 1 }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--ink)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "rgba(14,23,38,0.4)")}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+
+            {/* Limit hit — show all 3 plans */}
+            {upsellReason === "limit" && (
+              <>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--oxblood)", marginBottom: 10 }}>Free scan used</div>
+                <h3 style={{ fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 24, letterSpacing: "-0.02em", marginBottom: 6 }}>Upgrade to continue scanning</h3>
+                <p style={{ fontSize: 13.5, color: "rgba(14,23,38,0.6)", marginBottom: 24, lineHeight: 1.55 }}>You've used your one free scan. Choose a plan to run more scans and unlock detailed PDF reports.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <CheckoutButton tier="standard" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 10, padding: "13px 16px", fontSize: 14, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                    <span>Standard Scan — 3 accounts</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.75 }}>$49 one-time →</span>
+                  </CheckoutButton>
+                  <CheckoutButton tier="attorney" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--ink)", border: "1.5px solid rgba(14,23,38,0.2)", borderRadius: 10, padding: "13px 16px", fontSize: 14, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                    <span>Attorney-Reviewed — 10 accounts</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.65 }}>$199 one-time →</span>
+                  </CheckoutButton>
+                  <CheckoutButton tier="monitor" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--gold)", border: "1.5px solid rgba(184,146,74,0.4)", borderRadius: 10, padding: "13px 16px", fontSize: 14, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                    <span>+ Add VisaFootprint Monitor</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.85 }}>$19/mo →</span>
+                  </CheckoutButton>
+                </div>
+              </>
+            )}
+
+            {/* Timed — Standard user → upsell Attorney + Monitor */}
+            {upsellReason === "timed" && tier === "standard" && (
+              <>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 10 }}>Upgrade available</div>
+                <h3 style={{ fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 22, letterSpacing: "-0.02em", marginBottom: 6 }}>Need more accounts or an attorney review?</h3>
+                <p style={{ fontSize: 13.5, color: "rgba(14,23,38,0.6)", marginBottom: 22, lineHeight: 1.55 }}>Standard covers 3 accounts. For complex cases, Attorney-Reviewed gives you 10 accounts with a legal-grade analysis.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <CheckoutButton tier="attorney" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 10, padding: "13px 16px", fontSize: 14, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                    <span>Attorney-Reviewed — 10 accounts</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.75 }}>$199 one-time →</span>
+                  </CheckoutButton>
+                  <div style={{ border: "1px solid rgba(184,146,74,0.3)", borderRadius: 10, padding: "14px 16px", background: "rgba(184,146,74,0.04)" }}>
+                    <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 14, color: "var(--gold)", marginBottom: 4 }}>+ Add VisaFootprint Monitor</div>
+                    <div style={{ fontSize: 12.5, color: "rgba(14,23,38,0.6)", lineHeight: 1.5, marginBottom: 12 }}>Visa cases take 6–18 months. We watch your accounts the whole time and alert you to new risks. Cancel anytime.</div>
+                    <CheckoutButton tier="monitor" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "transparent", color: "var(--gold)", border: "1.5px solid rgba(184,146,74,0.4)", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, fontFamily: "Inter Tight, system-ui, sans-serif" }}>
+                      <span>$19/mo</span>
+                      <span>Add monitoring →</span>
+                    </CheckoutButton>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Timed — Attorney user → upsell Monitor only */}
+            {upsellReason === "timed" && tier === "attorney" && (
+              <>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 10 }}>One more thing</div>
+                <h3 style={{ fontFamily: "'Fraunces', serif", fontWeight: 500, fontSize: 22, letterSpacing: "-0.02em", marginBottom: 6 }}>+ Add VisaFootprint Monitor</h3>
+                <p style={{ fontSize: 13.5, color: "rgba(14,23,38,0.6)", marginBottom: 22, lineHeight: 1.55 }}>Visa cases take 6–18 months. We watch your accounts the whole time and alert you to new risks. Cancel anytime.</p>
+                <CheckoutButton tier="monitor" block style={{ textAlign: "center", padding: "15px 20px", background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: "Inter Tight, system-ui, sans-serif", letterSpacing: "0.01em" }}>
+                  Add Monitor — $19/month →
+                </CheckoutButton>
+              </>
+            )}
+
+            <button onClick={() => setUpsellOpen(false)} style={{ display: "block", width: "100%", marginTop: 14, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, color: "rgba(14,23,38,0.45)", fontFamily: "Inter Tight, system-ui, sans-serif", padding: "6px 0" }}>
+              No thanks, continue without upgrading
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.94) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
       `}</style>
     </div>
   );
