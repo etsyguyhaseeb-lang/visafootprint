@@ -12,7 +12,13 @@ _raw_url = os.getenv("DATABASE_URL", "")
 if _raw_url:
     # Railway sets postgres:// or postgresql:// — asyncpg needs postgresql+asyncpg://
     DATABASE_URL = re.sub(r"^postgres(ql)?://", "postgresql+asyncpg://", _raw_url)
-    _engine_kwargs: dict = {"pool_size": 5, "max_overflow": 10}
+    # Railway external URLs require SSL; internal URLs work without it.
+    # We pass ssl=True so both work safely.
+    _engine_kwargs: dict = {
+        "pool_size": 5,
+        "max_overflow": 10,
+        "connect_args": {"ssl": True},
+    }
 else:
     # Local dev: SQLite
     _db_path = os.getenv("DB_PATH", ".tmp/screening.db")
