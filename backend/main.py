@@ -15,7 +15,11 @@ from backend.routes.stripe_routes import router as stripe_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    try:
+        await init_db()
+        print("[DB] Database initialized.", flush=True)
+    except Exception as exc:
+        print(f"[DB] init_db failed (non-fatal): {exc}", flush=True)
     yield
 
 

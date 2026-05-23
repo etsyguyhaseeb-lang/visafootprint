@@ -12,12 +12,19 @@ _raw_url = os.getenv("DATABASE_URL", "")
 if _raw_url:
     # Railway sets postgres:// or postgresql:// — asyncpg needs postgresql+asyncpg://
     DATABASE_URL = re.sub(r"^postgres(ql)?://", "postgresql+asyncpg://", _raw_url)
-    # Railway external URLs require SSL; internal URLs work without it.
-    # We pass ssl=True so both work safely.
+    # Internal Railway URLs (.railway.internal) don't need SSL.
+    # External proxy URLs (roundhouse.proxy.rlwy.net) require SSL.
+    _is_internal = ".railway.internal" in _raw_url
+    import ssl as _ssl_mod
+    _ssl_ctx = None if _is_internal else _ssl_mod.create_default_context()
+    if _ssl_ctx:
+        _ssl_ctx.check_hostname = False
+        _ssl_ctx.verify_mode = _ssl_mod.CERT_NONE
     _engine_kwargs: dict = {
-        "pool_size": 5,
-        "max_overflow": 10,
-        "connect_args": {"ssl": True},
+        "pool_size": 3,
+        "max_overflow": 5,
+        "pool_timeout": 20,
+        "connect_args": {"ssl": _ssl_ctx, "timeout": 10} if not _is_internal else {"timeout": 10},
     }
 else:
     # Local dev: SQLite
