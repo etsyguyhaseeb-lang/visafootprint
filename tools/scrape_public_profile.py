@@ -111,17 +111,24 @@ def _sc_paginate(endpoint: str, base_params: dict,
 
 def _apify_run(actor_id: str, input_data: dict) -> list[dict]:
     if not APIFY_TOKEN:
+        print(f"[APIFY] No token — skipping {actor_id}", file=sys.stderr, flush=True)
         return []
     try:
+        print(f"[APIFY] Running {actor_id} ...", file=sys.stderr, flush=True)
         r = httpx.post(
             f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items",
             params={"token": APIFY_TOKEN, "limit": MAX_POSTS},
             json=input_data, timeout=APIFY_TIMEOUT)
+        print(f"[APIFY] {actor_id} → HTTP {r.status_code}", file=sys.stderr, flush=True)
         if r.status_code not in (200, 201):
+            print(f"[APIFY] Error body: {r.text[:400]}", file=sys.stderr, flush=True)
             return []
         data = r.json()
-        return data if isinstance(data, list) else []
-    except Exception:
+        result = data if isinstance(data, list) else []
+        print(f"[APIFY] {actor_id} → {len(result)} items", file=sys.stderr, flush=True)
+        return result
+    except Exception as e:
+        print(f"[APIFY] {actor_id} exception: {e}", file=sys.stderr, flush=True)
         return []
 
 
@@ -260,42 +267,69 @@ def scrape_tiktok(handle: str) -> list[dict]:
 
 # ── Facebook ───────────────────────────────────────────────────────────────────
 
+def _parse_fb_item(item: dict, fb_url: str) -> dict | None:
+    """Normalise a Facebook Apify result — handles field name variants across actors."""
+    if not isinstance(item, dict):
+        return None
+    text = (
+        item.get("text") or item.get("message") or item.get("story") or
+        item.get("postText") or item.get("content") or ""
+    ).strip()
+    if not text:
+        return None
+    url = (
+        item.get("url") or item.get("postUrl") or item.get("link") or
+        item.get("permalinkUrl") or fb_url
+    )
+    ts = (
+        item.get("time") or item.get("timestamp") or item.get("date") or
+        item.get("createdTime") or item.get("created_time")
+    )
+    return {"platform": "Facebook", "post_text": text, "post_url": url, "posted_at": str(ts or "")}
+
+
 def scrape_facebook(handle: str) -> list[dict]:
     fb_url = handle if handle.startswith("http") else f"https://www.facebook.com/{handle}"
 
-    # Production: Apify runs FIRST
     if _USE_PAID:
+        # ScrapeCreators first (cheapest)
         items = _sc_paginate("/v1/facebook/profile/posts", {"url": fb_url},
                              items_key="posts", next_key="nextCursor")
         if items:
-            results = [{"platform": "Facebook",
-                        "post_text": (p.get("text") or p.get("message") or "").strip(),
-                        "post_url":  p.get("url") or fb_url,
-                        "posted_at": p.get("time") or p.get("timestamp")}
-                       for p in items if isinstance(p, dict) and (p.get("text") or p.get("message") or "").strip()]
+            results = [r for r in (_parse_fb_item(p, fb_url) for p in items) if r]
             if results:
-                return results
+                return results[:MAX_POSTS]
 
-        apify = _apify_run("apify~facebook-posts-scraper",
+        # Apify: try apify~facebook-pages-scraper (current reliable actor)
+        apify = _apify_run("apify~facebook-pages-scraper",
                            {"startUrls": [{"url": fb_url}],
-                            "maxPosts": MAX_POSTS, "maxPostsPerPage": MAX_POSTS,
-                            "maxComments": 0, "scrapeAbout": False, "scrapeReviews": False})
+                            "maxPosts": MAX_POSTS,
+                            "maxComments": 0,
+                            "scrapeAbout": False,
+                            "scrapeReviews": False,
+                            "scrapeEvents": False})
         if apify:
-            results = [{"platform": "Facebook",
-                        "post_text": (i.get("text") or i.get("message") or "").strip(),
-                        "post_url":  i.get("url") or fb_url,
-                        "posted_at": i.get("time") or i.get("timestamp")}
-                       for i in apify if isinstance(i, dict) and (i.get("text") or i.get("message") or "").strip()]
+            results = [r for r in (_parse_fb_item(i, fb_url) for i in apify) if r]
             if results:
-                return results
+                return results[:MAX_POSTS]
 
-    # Local dev: Playwright fallback
+        # Apify fallback: apify~facebook-posts-scraper (legacy actor)
+        apify2 = _apify_run("apify~facebook-posts-scraper",
+                            {"startUrls": [{"url": fb_url}],
+                             "maxPosts": MAX_POSTS, "maxPostsPerPage": MAX_POSTS,
+                             "maxComments": 0, "scrapeAbout": False, "scrapeReviews": False})
+        if apify2:
+            results = [r for r in (_parse_fb_item(i, fb_url) for i in apify2) if r]
+            if results:
+                return results[:MAX_POSTS]
+
+    # Self-hosted Playwright fallback (works without cookies for public pages)
     posts = scrape_facebook_own(handle)
     if _is_ok(posts):
         return posts
 
     return _err("Facebook",
-                "Facebook shows limited content without login — run save-cookies to authenticate",
+                "Facebook requires login cookies or paid Apify — run save-cookies to authenticate",
                 fb_url)
 
 
@@ -351,23 +385,67 @@ def scrape_youtube(handle: str) -> list[dict]:
 
 # ── LinkedIn ───────────────────────────────────────────────────────────────────
 
-def scrape_linkedin(handle: str) -> list[dict]:
-    profile_url = f"https://www.linkedin.com/in/{handle}/"
+def _parse_li_item(item: dict, profile_url: str) -> dict | None:
+    """Normalise a LinkedIn Apify result — handles field name variants across actors."""
+    if not isinstance(item, dict):
+        return None
+    text = (
+        item.get("text") or item.get("commentary") or item.get("content") or
+        item.get("postText") or item.get("description") or
+        # some actors nest it under 'article'
+        (item.get("article") or {}).get("title") or ""
+    ).strip()
+    if not text:
+        return None
+    url = (
+        item.get("url") or item.get("postUrl") or item.get("link") or
+        item.get("shareUrl") or profile_url
+    )
+    ts = (
+        item.get("postedAt") or item.get("publishedAt") or item.get("date") or
+        item.get("createdAt") or item.get("timestamp")
+    )
+    return {"platform": "LinkedIn", "post_text": text, "post_url": url, "posted_at": str(ts or "")}
 
-    if _USE_PAID:
-        apify = _apify_run("curious_coder~linkedin-posts-scraper",
-                           {"profileUrls": [profile_url], "maxPosts": MAX_POSTS})
-        if apify:
-            results = [{"platform": "LinkedIn",
-                        "post_text": (i.get("text") or i.get("commentary") or "").strip(),
-                        "post_url":  i.get("url") or profile_url,
-                        "posted_at": i.get("postedAt") or i.get("publishedAt")}
-                       for i in apify if isinstance(i, dict) and (i.get("text") or i.get("commentary") or "").strip()]
-            if results:
-                return results
+
+def scrape_linkedin(handle: str) -> list[dict]:
+    # Accept full LinkedIn URLs too
+    if handle.startswith("http"):
+        profile_url = handle if handle.endswith("/") else handle + "/"
+    else:
+        profile_url = f"https://www.linkedin.com/in/{handle}/"
+
+    if not _USE_PAID:
+        return _err("LinkedIn",
+                    "LinkedIn requires Apify (set USE_PAID_SCRAPERS=true) or use the 'Paste posts' option",
+                    profile_url)
+
+    # Actor 1: curious_coder~linkedin-posts-scraper (most popular)
+    apify = _apify_run("curious_coder~linkedin-posts-scraper",
+                       {"profileUrls": [profile_url], "maxPosts": MAX_POSTS})
+    if apify:
+        results = [r for r in (_parse_li_item(i, profile_url) for i in apify) if r]
+        if results:
+            return results[:MAX_POSTS]
+
+    # Actor 2: dev_fusion~linkedin-profile-posts-scraper (alternative)
+    apify2 = _apify_run("dev_fusion~linkedin-profile-posts-scraper",
+                        {"profileUrl": profile_url, "maxPosts": MAX_POSTS})
+    if apify2:
+        results = [r for r in (_parse_li_item(i, profile_url) for i in apify2) if r]
+        if results:
+            return results[:MAX_POSTS]
+
+    # Actor 3: bebity~linkedin-profile-scraper (another fallback)
+    apify3 = _apify_run("bebity~linkedin-profile-scraper",
+                        {"profileUrls": [profile_url], "maxResults": MAX_POSTS})
+    if apify3:
+        results = [r for r in (_parse_li_item(i, profile_url) for i in apify3) if r]
+        if results:
+            return results[:MAX_POSTS]
 
     return _err("LinkedIn",
-                "LinkedIn blocks all automated scraping — use the 'Paste posts' option in the form",
+                "LinkedIn scraping failed via Apify — use the 'Paste posts' option as fallback",
                 profile_url)
 
 

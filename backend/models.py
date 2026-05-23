@@ -19,6 +19,11 @@ class Submission(Base):
     accounts     = Column(JSON, nullable=False)   # [{platform, handle}]
     reason       = Column(String, nullable=False)
     timeline     = Column(String, nullable=False)
+    tier         = Column(String, default="free")          # free|standard|attorney|monitor
+    # Lead status — update manually in Supabase dashboard
+    # Values: new | scan_done | paid | refunded | churned | no_show
+    lead_status  = Column(String, default="new", index=True)
+    notes        = Column(Text, nullable=True)             # internal notes field
     created_at   = Column(DateTime, default=datetime.utcnow)
 
 

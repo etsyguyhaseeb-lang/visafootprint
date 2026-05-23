@@ -35,6 +35,7 @@ export interface FlaggedPost {
   risk_level: "HIGH" | "MEDIUM" | "LOW";
   risk_category: string;
   explanation: string;
+  post_url?: string;
 }
 
 export interface ReportData {

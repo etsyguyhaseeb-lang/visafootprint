@@ -165,6 +165,11 @@ export default function ReportPage() {
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.15em", color: "#1B2741", textTransform: "uppercase", marginBottom: 4 }}>{post.platform}{post.date ? ` · ${post.date}` : ""}</div>
                     <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: "var(--ink)", marginBottom: 6 }}>&ldquo;{post.text}&rdquo;</div>
                     <div style={{ fontSize: 13, color: "#1B2741", lineHeight: 1.5 }}>{post.explanation}</div>
+                    {post.post_url && (
+                      <a href={post.post_url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 11, color: "var(--oxblood)", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", borderBottom: "1px solid rgba(122,31,31,0.3)", paddingBottom: 1 }}>
+                        🔗 View original post →
+                      </a>
+                    )}
                   </div>
                   <div style={{ flexShrink: 0, padding: "6px 12px", background: "#C83B3B", color: "white", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", alignSelf: "flex-start" }}>Delete</div>
                 </div>
@@ -185,6 +190,11 @@ export default function ReportPage() {
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.15em", color: "#1B2741", textTransform: "uppercase", marginBottom: 4 }}>{post.platform}{post.date ? ` · ${post.date}` : ""}</div>
                     <div style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: "var(--ink)", marginBottom: 6 }}>&ldquo;{post.text}&rdquo;</div>
                     <div style={{ fontSize: 13, color: "#1B2741", lineHeight: 1.5 }}>{post.explanation}</div>
+                    {post.post_url && (
+                      <a href={post.post_url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 11, color: "#C98B27", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", borderBottom: "1px solid rgba(201,139,39,0.3)", paddingBottom: 1 }}>
+                        🔗 View original post →
+                      </a>
+                    )}
                   </div>
                   <div style={{ flexShrink: 0, padding: "6px 12px", background: "#C98B27", color: "white", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", alignSelf: "flex-start" }}>Archive</div>
                 </div>

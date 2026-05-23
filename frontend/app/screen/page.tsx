@@ -102,14 +102,20 @@ function ScreenPageInner() {
   const [upsellReason, setUpsellReason] = useState<"limit" | "timed">("timed");
   const maxAccounts = TIER_LIMITS[tier] ?? 1;
 
+  // Restore tier from URL session_id (fresh return from Stripe) or localStorage (returning user)
   useEffect(() => {
-    const sessionId = searchParams.get("session_id");
+    const urlSessionId = searchParams.get("session_id");
+    const storedSessionId = typeof window !== "undefined" ? localStorage.getItem("vf_session_id") : null;
+    const sessionId = urlSessionId || storedSessionId;
     if (!sessionId) return;
     setTierVerifying(true);
     fetch(`${BASE}/api/verify-payment?session_id=${encodeURIComponent(sessionId)}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.paid && data.tier) setTier(data.tier);
+        if (data.paid && data.tier) {
+          setTier(data.tier as "free" | "standard" | "attorney" | "monitor");
+          if (typeof window !== "undefined") localStorage.setItem("vf_session_id", sessionId);
+        }
       })
       .catch(() => {})
       .finally(() => setTierVerifying(false));
@@ -124,6 +130,25 @@ function ScreenPageInner() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
+  // When email is entered, check if this person already paid (recovers tier without session_id)
+  useEffect(() => {
+    if (!email || !email.includes("@") || !email.includes(".") || tier !== "free") return;
+    const t = setTimeout(() => {
+      fetch(`${BASE}/api/check-paid?email=${encodeURIComponent(email)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.paid && data.tier) {
+            setTier(data.tier as "free" | "standard" | "attorney" | "monitor");
+            if (data.session_id && typeof window !== "undefined")
+              localStorage.setItem("vf_session_id", data.session_id);
+          }
+        })
+        .catch(() => {});
+    }, 800); // debounce 800ms
+    return () => clearTimeout(t);
+  }, [email, tier]);
+
   const [country, setCountry] = useState("");
   const [countrySearch, setCountrySearch] = useState("");
   const [accounts, setAccounts] = useState<AccountInput[]>([{ platform: "Twitter/X", handle: "" }]);

@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from backend.database import AsyncSessionLocal
 from backend.models import PaidOrder
+from backend.email_utils import send_email, payment_confirmed_html
 
 router = APIRouter()
 
@@ -53,6 +54,24 @@ async def create_checkout(req: CheckoutRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/check-paid")
+async def check_paid(email: str):
+    """Look up whether an email has a paid order. Used to restore tier after navigation."""
+    if not email or "@" not in email:
+        return {"paid": False, "tier": None}
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(PaidOrder)
+            .where(PaidOrder.email == email.lower().strip())
+            .where(PaidOrder.paid == True)
+            .order_by(PaidOrder.created_at.desc())
+        )
+        order = result.scalars().first()
+        if order:
+            return {"paid": True, "tier": order.tier, "session_id": order.stripe_session_id}
+    return {"paid": False, "tier": None}
+
+
 @router.get("/verify-payment")
 async def verify_payment(session_id: str):
     if not session_id or not stripe.api_key:
@@ -84,6 +103,7 @@ async def stripe_webhook(request: Request):
         email     = (session.get("customer_details") or {}).get("email", "")
         session_id = session.get("id", "")
 
+        is_new = False
         async with AsyncSessionLocal() as db:
             existing = await db.execute(
                 select(PaidOrder).where(PaidOrder.stripe_session_id == session_id)
@@ -96,7 +116,28 @@ async def stripe_webhook(request: Request):
                     paid=True,
                 ))
                 await db.commit()
+                is_new = True
 
         print(f"[STRIPE] Payment recorded: {session_id} tier={tier} email={email}", flush=True)
+
+        # Update lead_status on all submissions by this email
+        if is_new and email:
+            from backend.models import Submission
+            async with AsyncSessionLocal() as db2:
+                result = await db2.execute(
+                    select(Submission).where(Submission.email == email.lower().strip())
+                )
+                for sub in result.scalars().all():
+                    sub.lead_status = "paid"
+                    sub.tier        = tier
+                await db2.commit()
+
+        if is_new and email:
+            screen_url = f"{FRONTEND_URL}/screen?session_id={session_id}"
+            await send_email(
+                to=email,
+                subject="VisaFootprint — payment confirmed, start your screening",
+                html=payment_confirmed_html(tier, screen_url),
+            )
 
     return {"received": True}
