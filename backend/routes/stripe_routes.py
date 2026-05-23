@@ -90,54 +90,72 @@ async def stripe_webhook(request: Request):
     payload    = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
+    if not WEBHOOK_SECRET:
+        print("[WEBHOOK] STRIPE_WEBHOOK_SECRET not set — skipping signature check", flush=True)
+        import json
+        try:
+            event = json.loads(payload)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
+    else:
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+        except stripe.SignatureVerificationError as e:
+            print(f"[WEBHOOK] Signature verification failed: {e}", flush=True)
+            raise HTTPException(status_code=400, detail="Invalid webhook signature.")
+        except Exception as e:
+            print(f"[WEBHOOK] construct_event error: {e}", flush=True)
+            raise HTTPException(status_code=400, detail="Webhook error.")
+
+    event_type = event.get("type") if isinstance(event, dict) else event["type"]
+    print(f"[WEBHOOK] Received event type: {event_type}", flush=True)
+
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
-    except stripe.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid webhook signature.")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Webhook error.")
+        if event_type == "checkout.session.completed":
+            data       = event["data"]["object"]
+            tier       = (data.get("metadata") or {}).get("tier", "standard")
+            email      = (data.get("customer_details") or {}).get("email", "")
+            session_id = data.get("id", "")
 
-    if event["type"] == "checkout.session.completed":
-        session   = event["data"]["object"]
-        tier      = (session.get("metadata") or {}).get("tier", "standard")
-        email     = (session.get("customer_details") or {}).get("email", "")
-        session_id = session.get("id", "")
-
-        is_new = False
-        async with AsyncSessionLocal() as db:
-            existing = await db.execute(
-                select(PaidOrder).where(PaidOrder.stripe_session_id == session_id)
-            )
-            if not existing.scalar_one_or_none():
-                db.add(PaidOrder(
-                    stripe_session_id=session_id,
-                    email=email,
-                    tier=tier,
-                    paid=True,
-                ))
-                await db.commit()
-                is_new = True
-
-        print(f"[STRIPE] Payment recorded: {session_id} tier={tier} email={email}", flush=True)
-
-        # Update lead_status on all submissions by this email
-        if is_new and email:
-            from backend.models import Submission
-            async with AsyncSessionLocal() as db2:
-                result = await db2.execute(
-                    select(Submission).where(Submission.email == email.lower().strip())
+            is_new = False
+            async with AsyncSessionLocal() as db:
+                existing = await db.execute(
+                    select(PaidOrder).where(PaidOrder.stripe_session_id == session_id)
                 )
-                for sub in result.scalars().all():
-                    sub.lead_status = "paid"
-                    sub.tier        = tier
-                await db2.commit()
+                if not existing.scalar_one_or_none():
+                    db.add(PaidOrder(
+                        stripe_session_id=session_id,
+                        email=email,
+                        tier=tier,
+                        paid=True,
+                    ))
+                    await db.commit()
+                    is_new = True
 
-        if is_new and email:
-            screen_url = f"{FRONTEND_URL}/screen?session_id={session_id}"
-            await send_email(
-                to=email,
-                subject="VisaFootprint — payment confirmed, start your screening",
-                html=payment_confirmed_html(tier, screen_url),
-            )
+            print(f"[STRIPE] Payment recorded: {session_id} tier={tier} email={email}", flush=True)
+
+            if is_new and email:
+                from backend.models import Submission
+                async with AsyncSessionLocal() as db2:
+                    result = await db2.execute(
+                        select(Submission).where(Submission.email == email.lower().strip())
+                    )
+                    for sub in result.scalars().all():
+                        sub.lead_status = "paid"
+                        sub.tier        = tier
+                    await db2.commit()
+
+            if is_new and email:
+                screen_url = f"{FRONTEND_URL}/screen?session_id={session_id}"
+                await send_email(
+                    to=email,
+                    subject="VisaFootprint — payment confirmed, start your screening",
+                    html=payment_confirmed_html(tier, screen_url),
+                )
+    except Exception as exc:
+        import traceback
+        print(f"[WEBHOOK] Processing error: {exc}", flush=True)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(exc))
 
     return {"received": True}
