@@ -90,24 +90,27 @@ async def stripe_webhook(request: Request):
     payload    = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
-    if not WEBHOOK_SECRET:
-        print("[WEBHOOK] STRIPE_WEBHOOK_SECRET not set — skipping signature check", flush=True)
-        import json
+    import json
+    # Always parse payload as plain dict — works regardless of Stripe SDK version.
+    # Use SDK only for signature verification.
+    try:
+        event = json.loads(payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
+
+    if WEBHOOK_SECRET:
         try:
-            event = json.loads(payload)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
-    else:
-        try:
-            event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+            stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
         except stripe.SignatureVerificationError as e:
             print(f"[WEBHOOK] Signature verification failed: {e}", flush=True)
             raise HTTPException(status_code=400, detail="Invalid webhook signature.")
         except Exception as e:
             print(f"[WEBHOOK] construct_event error: {e}", flush=True)
             raise HTTPException(status_code=400, detail="Webhook error.")
+    else:
+        print("[WEBHOOK] STRIPE_WEBHOOK_SECRET not set — skipping signature check", flush=True)
 
-    event_type = event.get("type") if isinstance(event, dict) else event["type"]
+    event_type = event.get("type", "")
     print(f"[WEBHOOK] Received event type: {event_type}", flush=True)
 
     try:
