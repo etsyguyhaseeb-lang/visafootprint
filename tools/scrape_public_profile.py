@@ -137,8 +137,14 @@ def _apify_run(actor_id: str, input_data: dict) -> list[dict]:
 def scrape_twitter(handle: str) -> list[dict]:
     profile_url = f"https://x.com/{handle}"
 
-    # Production: Apify runs FIRST — own scrapers need cookies that don't exist on the server
-    if _USE_PAID:
+    # 1. Official Twitter API v2 — free, reliable, always try first
+    if TWITTER_BEARER_TOKEN:
+        posts = scrape_twitter_apiv2(handle)
+        if _is_ok(posts):
+            return posts
+
+    # 2. ScrapeCreators paid API
+    if _USE_PAID and SCRAPECREATORS_KEY:
         items = _sc_paginate("/v1/twitter/user-tweets", {"handle": handle},
                              items_key="tweets", next_key="nextCursor")
         if items:
@@ -150,6 +156,8 @@ def scrape_twitter(handle: str) -> list[dict]:
             if results:
                 return results
 
+    # 3. Apify Twitter scraper
+    if _USE_PAID and APIFY_TOKEN:
         apify = _apify_run("vdrmota~twitter-scraper",
                            {"startUrls": [{"url": f"https://twitter.com/{handle}"}],
                             "maxItems": MAX_POSTS})
@@ -162,22 +170,13 @@ def scrape_twitter(handle: str) -> list[dict]:
             if results:
                 return results
 
-    # Local dev: own scrapers first
+    # 4. Playwright-based own scraper (needs cookies on server)
     posts = scrape_twitter_own(handle)
     if _is_ok(posts):
         return posts
 
-    posts = scrape_twitter_public(handle)
-    if _is_ok(posts):
-        return posts
-
-    if TWITTER_BEARER_TOKEN:
-        posts = scrape_twitter_apiv2(handle)
-        if _is_ok(posts):
-            return posts
-
     return _err("Twitter/X",
-                "Profile may be protected — try saving Twitter cookies via save-cookies",
+                "Profile may be protected or has no public tweets",
                 profile_url)
 
 
