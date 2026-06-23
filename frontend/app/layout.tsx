@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full scroll-smooth">
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
-        <Script src="/rdpixel.js" strategy="beforeInteractive" />
+        <Script src="/rdpixel.js" strategy="afterInteractive" />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
