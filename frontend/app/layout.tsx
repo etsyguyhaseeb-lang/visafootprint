@@ -27,11 +27,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full scroll-smooth">
-      <head>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script dangerouslySetInnerHTML={{ __html: `window.rdt=window.rdt||function(){(window.rdt.q=window.rdt.q||[]).push(arguments)};!function(d){var s=d.createElement('script');s.src='https://www.redditstatic.com/ads/v2.js';s.async=1;d.head.appendChild(s);}(document);rdt('init','a2_j6msvpujp3r0');rdt('track','PageVisit');` }} />
-      </head>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: `window.rdt=window.rdt||function(){(window.rdt.q=window.rdt.q||[]).push(arguments)};!function(d){var s=d.createElement('script');s.src='https://www.redditstatic.com/ads/v2.js';s.async=1;d.head.appendChild(s);}(document);rdt('init','a2_j6msvpujp3r0');rdt('track','PageVisit');` }} />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
