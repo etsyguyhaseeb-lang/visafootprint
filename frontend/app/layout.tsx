@@ -29,13 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full scroll-smooth">
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
-        <Script
-          id="reddit-pixel"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `!function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/v2.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);rdt('init','a2_j6msvpujp3r0');rdt('track','PageVisit');`
-          }}
-        />
+        <Script src="/rdpixel.js" strategy="beforeInteractive" />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
